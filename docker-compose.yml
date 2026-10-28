@@ -1,0 +1,26 @@
+# Local PostgreSQL for development and tests.
+#   docker compose up -d      start
+#   docker compose down       stop (data is kept in the beacon-pgdata volume)
+#   docker compose down -v    stop and DELETE all data
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: beacon-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: beacon
+      POSTGRES_PASSWORD: beacon
+      POSTGRES_DB: beacon
+    ports:
+      - "5433:5432"   # host port 5433 avoids clashing with a locally installed PostgreSQL
+    volumes:
+      - beacon-pgdata:/var/lib/postgresql/data
+      - ./docker/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beacon -d beacon"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  beacon-pgdata:
