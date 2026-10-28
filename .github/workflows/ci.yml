@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: API type check + tests (unit + integration)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: beacon
+          POSTGRES_PASSWORD: beacon
+          POSTGRES_DB: beacon_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U beacon" --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: server
+    env:
+      NODE_ENV: test
+      TEST_DATABASE_URL: postgres://beacon:beacon@localhost:5432/beacon_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-coverage
+          path: server/coverage/
+          retention-days: 7
+
+  client:
+    name: Web type check + lint + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-latest
+    needs: [server, client]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: beacon
+          POSTGRES_PASSWORD: beacon
+          POSTGRES_DB: beacon
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U beacon" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://beacon:beacon@localhost:5432/beacon
+      API_URL: http://localhost:4000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Install
+        run: |
+          npm ci --prefix server
+          npm ci --prefix client
+          npx --prefix client playwright install --with-deps chromium
+      - name: Build API, prepare database and start it (same commands as production)
+        run: |
+          npm --prefix server run build
+          nohup npm --prefix server run start:prod > api.log 2>&1 &
+      - name: Build and start web app
+        run: |
+          npm --prefix client run build
+          nohup npm --prefix client start > web.log 2>&1 &
+          npx wait-on --timeout 60000 http://localhost:4000/api/health http://localhost:3000
+      - run: npm --prefix client run test:e2e
+      - if: failure()
+        run: cat api.log web.log

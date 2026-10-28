@@ -1,0 +1,47 @@
+# Render Blueprint: backend API + PostgreSQL.
+# Render dashboard → New → Blueprint → select this repo. Render prompts for the
+# `sync: false` secrets on first deploy. The frontend is deployed separately on
+# Vercel (see docs/deployment.md).
+services:
+  - type: web
+    name: beacon-api
+    runtime: node
+    plan: free
+    region: frankfurt # closest Render region to Rwanda
+    rootDir: server
+    # Dev dependencies (TypeScript) are needed to compile; NODE_ENV=production
+    # would otherwise make npm skip them.
+    buildCommand: npm ci --include=dev && npm run build
+    # Runs the compiled migrations and seed, then the API. Both are idempotent,
+    # so running them on every start is safe. (Render's preDeployCommand is the
+    # cleaner option on paid plans.)
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: TRUST_PROXY
+        value: "2" # browser → Vercel (Next.js proxy) → Render → API
+      - key: DATABASE_URL
+        fromDatabase:
+          name: beacon-db
+          property: connectionString
+      - key: ENCRYPTION_KEY
+        sync: false # generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+      - key: CORS_ORIGINS
+        sync: false # e.g. https://beacon.vercel.app
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+      - key: SEED_COORDINATOR_PASSWORD
+        sync: false
+      - key: SEED_DEMO_PASSWORD
+        sync: false
+
+databases:
+  - name: beacon-db
+    plan: free
+    region: frankfurt
+    databaseName: beacon
+    user: beacon
