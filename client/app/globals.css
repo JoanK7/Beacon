@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+/*
+ * Beacon design tokens: "Calm Lagoon" (see docs/design/style-guide.md).
+ * Soft teal conveys calm and wellbeing (and is deliberately unlike LMS blues);
+ * sunshine yellow is reserved for rewards and celebration; coral and lavender
+ * are gentle accents. Token NAMES are kept stable so every screen picks up the
+ * palette automatically. All text/background pairs meet WCAG AA (≥ 4.5:1).
+ */
+@theme {
+  --font-sans: var(--font-nunito), ui-rounded, ui-sans-serif, system-ui, sans-serif;
+
+  /* Teal / mint: primary */
+  --color-brand-50: #eaf7f4;
+  --color-brand-100: #d3efe8;
+  --color-brand-200: #a8dfd3;
+  --color-brand-500: #14a394;
+  --color-brand-600: #0f8b7e;
+  --color-brand-700: #0c7468; /* white text 5.6:1 */
+  --color-brand-800: #095d54;
+  --color-brand-900: #23404a; /* headings: soft teal-slate, not navy */
+
+  /* Sunshine: rewards, badges, celebration */
+  --color-beacon-50: #fff6dd;
+  --color-beacon-100: #ffedb8;
+  --color-beacon-400: #ffd47a;
+  --color-beacon-500: #ffc857;
+  --color-beacon-700: #8a5a00;
+
+  /* Gentle accents */
+  --color-coral-50: #ffe4dc;
+  --color-coral-400: #ff8a6b;
+  --color-coral-700: #a63e24;
+  --color-lavender-50: #f0ecff;
+  --color-lavender-300: #cbbeff;
+  --color-lavender-700: #5b47b8;
+  --color-sky-soft: #eaf4fb;
+
+  --color-ink: #2b3a4a;
+  --color-muted: #5a6b7b;
+  --color-line: #e3ebf0;
+  --color-canvas: #f3f8fb;
+
+  /* Motion */
+  --animate-bob: bob 3.2s ease-in-out infinite;
+  --animate-pop: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-confetti: confetti 2.6s ease-in forwards;
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.85) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes confetti {
+    0% { opacity: 1; transform: translateY(-10vh) rotate(0deg); }
+    100% { opacity: 0; transform: translateY(85vh) rotate(540deg); }
+  }
+}
+
+body {
+  /* A very soft wash of mint and lavender so the page feels airy, not flat. */
+  background:
+    radial-gradient(60rem 30rem at 100% -10%, rgb(203 190 255 / 0.18), transparent 60%),
+    radial-gradient(50rem 28rem at -10% 0%, rgb(168 223 211 / 0.25), transparent 60%),
+    var(--color-canvas);
+  background-attachment: fixed;
+  color: var(--color-ink);
+}
+
+/* Visible focus ring for keyboard users (NFR3). */
+:focus-visible {
+  outline: 3px solid var(--color-beacon-500);
+  outline-offset: 2px;
+}
+
+/* Respect users who prefer less motion: stop bobbing, confetti and pop-ins. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .confetti-layer {
+    display: none !important;
+  }
+}
