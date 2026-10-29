@@ -12,10 +12,19 @@ async function shot(page: Page, name: string, testInfo: TestInfo) {
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/${testInfo.project.name}-${name}.png`, fullPage: true });
 }
 
+/**
+ * A unique username within the app's 30-character limit, whatever the device
+ * name (e.g. "small-android"): the timestamp in base 36 is 8 characters.
+ */
+function uniqueUsername(prefix: string, testInfo: TestInfo) {
+  return `${prefix}_${testInfo.project.name.slice(0, 10)}_${Date.now().toString(36)}`;
+}
+
 /** Register a fresh peer account and wait for the dashboard. */
 async function registerPeer(page: Page, prefix: string, testInfo: TestInfo) {
-  const username = `${prefix}_${testInfo.project.name}_${Date.now()}`;
+  const username = uniqueUsername(prefix, testInfo);
   await page.goto('/register');
+  await page.waitForLoadState('networkidle');
   await page.getByLabel('Username (pseudonym)').fill(username);
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await page.getByRole('checkbox').check();
@@ -26,6 +35,7 @@ async function registerPeer(page: Page, prefix: string, testInfo: TestInfo) {
 
 async function signIn(page: Page, username: string, password: string) {
   await page.goto('/login');
+  await page.waitForLoadState('networkidle');
   await page.getByLabel('Username').fill(username);
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
@@ -40,7 +50,7 @@ async function answerBoundariesQuiz(page: Page) {
 }
 
 test('peer supporter completes the module-to-referral flow', async ({ page }, testInfo) => {
-  const username = `e2e_${testInfo.project.name}_${Date.now()}`;
+  const username = uniqueUsername('e2e', testInfo);
 
   await page.goto('/');
   await shot(page, '01-landing', testInfo);
