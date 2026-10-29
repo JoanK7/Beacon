@@ -375,6 +375,61 @@ describeDb('Beacon API', () => {
     });
   });
 
+  describe('refreshing module text on a live database', () => {
+    const seed = (options: Parameters<typeof SeedModule.seed>[0]) => (require('../../src/db/seed') as typeof SeedModule).seed(options);
+    const sectionsOf = async (slug: string) =>
+      (
+        await pool.query<{ section_id: number; body: string }>(
+          `SELECT s.section_id, s.body FROM module_sections s JOIN training_modules m USING (module_id)
+           WHERE m.slug = $1 ORDER BY s.order_index`,
+          [slug],
+        )
+      ).rows;
+    const viewsOf = async (slug: string) =>
+      Number(
+        (
+          await pool.query(
+            `SELECT count(*) FROM section_views v JOIN module_sections s USING (section_id)
+             JOIN training_modules m USING (module_id) WHERE m.slug = $1`,
+            [slug],
+          )
+        ).rows[0].count,
+      );
+
+    it('updates older text in place, keeping section ids and reading progress', async () => {
+      const slug = 'boundaries-confidentiality'; // peer_one has read this module
+      const before = await sectionsOf(slug);
+      const viewsBefore = await viewsOf(slug);
+      expect(viewsBefore).toBeGreaterThan(0);
+      // Pretend the database still has an older version of the text.
+      await pool.query(`UPDATE module_sections SET body = 'Old plain text' WHERE section_id = ANY($1::int[])`, [before.map((s) => s.section_id)]);
+      await pool.query('UPDATE training_modules SET content_version = 0 WHERE slug = $1', [slug]);
+
+      await seed({ log: () => {} });
+
+      const after = await sectionsOf(slug);
+      expect(after.map((s) => s.section_id)).toEqual(before.map((s) => s.section_id));
+      expect(after.map((s) => s.body)).toEqual(moduleBySlug(slug).sections.map((s) => s.body));
+      expect(await viewsOf(slug)).toBe(viewsBefore);
+      const { rows } = await pool.query('SELECT content_version FROM training_modules WHERE slug = $1', [slug]);
+      expect(rows[0].content_version).toBe(moduleBySlug(slug).version);
+    });
+
+    it('never overwrites a module an admin has edited', async () => {
+      const slug = 'caring-for-yourself';
+      const admin = await login('admin', 'BeaconAdmin#2026');
+      const { rows } = await pool.query('SELECT module_id FROM training_modules WHERE slug = $1', [slug]);
+      const edit = (await admin.get(`/api/admin/modules/${rows[0].module_id}`).expect(200)).body.module;
+      edit.sections[0].body = 'Reviewed wording from Solid Minds';
+      await admin.put(`/api/admin/modules/${edit.id}`).send(edit).expect(200);
+      await pool.query('UPDATE training_modules SET content_version = 0 WHERE slug = $1', [slug]);
+
+      await seed({ log: () => {} });
+
+      expect((await sectionsOf(slug))[0]!.body).toBe('Reviewed wording from Solid Minds');
+    });
+  });
+
   describe('privacy rights', () => {
     it('deletes an account and all linked records', async () => {
       const agent = await login('peer_two', 'second-pass');

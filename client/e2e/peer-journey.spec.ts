@@ -112,6 +112,41 @@ test('peer supporter completes the module-to-referral flow', async ({ page }, te
   await shot(page, '12-progress', testInfo);
 });
 
+test('lessons use interactive blocks that never block progress', async ({ page }, testInfo) => {
+  await registerPeer(page, 'e2e_lb', testInfo);
+  await page.goto('/learn/peers-model');
+  const lesson = page.getByRole('article');
+
+  // Section 1: key terms in bold, a "Remember" callout, and a reading time.
+  await expect(lesson.locator('strong', { hasText: 'Belonging is protective' })).toBeVisible();
+  await expect(lesson.getByRole('complementary', { name: 'Remember' })).toBeVisible();
+  await expect(lesson.getByText(/Section 1 of 6 · about \d+ min/)).toBeVisible();
+  await page.getByRole('button', { name: 'Mark as read & continue' }).click();
+  await expect(page.getByText('Nice! 1 of 6 sections read')).toBeVisible();
+  // Section 2: ordered ideas as a step list.
+  await expect(lesson.getByRole('listitem').filter({ hasText: 'Meaning' })).toBeVisible();
+  await page.getByRole('button', { name: 'Mark as read & continue' }).click();
+
+  // Section 3: think first, then reveal a suggested answer.
+  await page.getByRole('button', { name: 'Show a suggested answer' }).click();
+  await expect(lesson.getByText(/Staying alongside them/)).toBeVisible();
+  await page.getByRole('button', { name: 'Mark as read & continue' }).click();
+
+  // Section 4: flip cards and a "Check yourself" question with kind feedback.
+  await lesson.getByRole('button', { name: /^P \(tap/ }).click();
+  await expect(lesson.getByText('being fully with the person')).toBeVisible();
+  const check = lesson.getByRole('group');
+  await check.getByRole('button', { name: 'Referral with care' }).click();
+  await expect(lesson.getByText(/Not quite/)).toBeVisible();
+  await check.getByRole('button', { name: 'Early support' }).click();
+  await expect(lesson.getByText('You got there!')).toBeVisible();
+  await shot(page, '22-lesson-blocks', testInfo);
+
+  // Section 5: moving on works without touching anything.
+  await page.getByRole('button', { name: 'Mark as read & continue' }).click();
+  await expect(page.getByRole('heading', { name: 'What peer counseling is, and is not' })).toBeVisible();
+});
+
 test('peer plays a practice conversation, retrying after an unhelpful choice', async ({ page }, testInfo) => {
   await registerPeer(page, 'e2e_sc', testInfo);
 
@@ -208,6 +243,9 @@ test('celebrations respect reduced motion', async ({ browser }, testInfo) => {
   await registerPeer(page, 'e2e_rm', testInfo);
 
   await page.goto('/learn/psychological-first-aid');
+  // Flip cards still work, without the turning animation.
+  await page.getByRole('button', { name: /^LOOK \(tap/ }).click();
+  await expect(page.getByText(/Observe the situation and the person/)).toBeVisible();
   for (let i = 0; i < 4; i += 1) {
     await page.getByRole('button', { name: 'Mark as read & continue' }).click();
   }

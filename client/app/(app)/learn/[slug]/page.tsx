@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Award, Check, CheckCircle2, Clock, MessagesSquare, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Award, BookOpenCheck, Check, CheckCircle2, Clock, MessagesSquare, Zap } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { useApi } from '@/lib/use-api';
 import { Alert, Button, Card, ErrorState, LinkButton, Loading, Pill, ProgressBar, cx } from '@/components/ui';
@@ -14,6 +14,7 @@ import { Bea } from '@/components/mascot';
 import { competencyFor } from '@/lib/competencies';
 import type { ModuleDetail, ModuleSection, SectionViewResult } from '@/lib/types';
 import { ListenButton } from '@/components/listen-button';
+import { readingMinutes, toPlainText } from '@/lib/content-markup';
 
 export default function ModulePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -24,6 +25,7 @@ export default function ModulePage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
+  const [justRead, setJustRead] = useState<number | null>(null); // sections read count, shown briefly after continuing
 
   if (loading) return <Loading />;
   if (error || !data) return <ErrorState error={error} onRetry={reload} />;
@@ -47,6 +49,7 @@ export default function ModulePage() {
       if (!isViewed(section)) {
         const result = await api<SectionViewResult>(`/modules/${slug}/sections/${section.id}/view`, { method: 'POST' });
         setViewed((prev) => new Set(prev).add(section.id));
+        setJustRead(viewedCount + 1);
         if (result.status === 'completed' && !completed && mod.status !== 'completed') {
           setCompleted(true);
           setCelebrate(true); // first time finishing this module
@@ -105,7 +108,10 @@ export default function ModulePage() {
               {sections.map((s, i) => (
                 <li key={s.id} className="shrink-0">
                   <button
-                    onClick={() => setIndex(i)}
+                    onClick={() => {
+                      setIndex(i);
+                      setJustRead(null);
+                    }}
                     aria-current={i === current ? 'step' : undefined}
                     className={cx(
                       'flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm',
@@ -130,12 +136,35 @@ export default function ModulePage() {
 
         <div className="space-y-4">
           <Card as="article" aria-labelledby="section-heading" className="sm:p-8">
-            <p className="text-xs font-semibold text-muted">
-              Section {current + 1} of {sections.length}
-            </p>
-            <div className="mb-4 mt-1 flex items-start justify-between gap-3">
-              <h2 id="section-heading" className="text-xl font-bold text-brand-900">{section.heading}</h2>
-              <ListenButton key={section.id} text={`${section.heading}. ${section.body}`} label="Listen to this section" />
+            {justRead !== null && (
+              <p key={justRead} role="status" className="mb-4 inline-flex animate-pop items-center gap-2 rounded-full bg-beacon-50 px-3 py-1.5 text-xs font-bold text-beacon-700 ring-1 ring-inset ring-beacon-400/60">
+                <BookOpenCheck className="size-4" aria-hidden /> Nice! {justRead} of {sections.length} sections read
+              </p>
+            )}
+            <div className="flex items-center gap-3">
+              <span className={cx('flex size-10 shrink-0 items-center justify-center rounded-2xl', tone.soft)}>
+                <tone.icon className={cx('size-5', tone.iconColor)} aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-muted">
+                  Section {current + 1} of {sections.length} · about {readingMinutes(section.body)} min
+                </p>
+                <div className="mt-1.5 flex gap-1" aria-hidden>
+                  {sections.map((s, i) => (
+                    <span
+                      key={s.id}
+                      className={cx(
+                        'h-1.5 flex-1 rounded-full',
+                        i === current ? 'bg-brand-600' : isViewed(s) ? 'bg-brand-200' : 'bg-line',
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mb-5 mt-4 flex items-start justify-between gap-3">
+              <h2 id="section-heading" className="text-xl font-extrabold text-brand-900 sm:text-2xl">{section.heading}</h2>
+              <ListenButton key={section.id} text={`${section.heading}. ${toPlainText(section.body)}`} label="Listen to this section" />
             </div>
             {section.mediaUrl && section.mediaType === 'image' && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -151,7 +180,10 @@ export default function ModulePage() {
 
             {saveError && <Alert tone="error" className="mt-4">{saveError}</Alert>}
             <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
-              <Button variant="ghost" onClick={() => setIndex(current - 1)} disabled={current === 0}>
+              <Button variant="ghost" onClick={() => {
+                  setIndex(current - 1);
+                  setJustRead(null);
+                }} disabled={current === 0}>
                 <ArrowLeft className="size-4" aria-hidden /> Previous
               </Button>
               {!(isLast && isViewed(section)) && (

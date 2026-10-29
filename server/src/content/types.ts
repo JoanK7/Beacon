@@ -63,6 +63,13 @@ export interface ModuleContent {
   topic: string;
   summary: string;
   estimatedMinutes: number;
+  /**
+   * Bump when the module text changes. On the next deploy the seed copies the
+   * new text into the database, unless an admin has edited the module.
+   * Keep the number of sections the same so learners' progress is unaffected.
+   */
+  version: number;
+  /** Section bodies use the lesson markup described in docs/design/style-guide.md. */
   sections: { heading: string; body: string }[];
   /** The first two questions double as the skill-check items for this module. */
   quiz: { prompt: string; options: string[]; answerIndex: number; explanation: string }[];

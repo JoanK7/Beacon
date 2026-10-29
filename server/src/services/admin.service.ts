@@ -152,7 +152,7 @@ export async function updateModule(moduleId: number, data: ModuleInput) {
   await db.withTransaction(async (client) => {
     const { rowCount } = await client.query(
       `UPDATE training_modules SET slug = $1, title = $2, topic = $3, summary = $4, order_index = $5,
-         estimated_minutes = $6, status = $7, content_verified = $8, updated_at = now()
+         estimated_minutes = $6, status = $7, content_verified = $8, admin_edited = true, updated_at = now()
        WHERE module_id = $9`,
       [data.slug, data.title, data.topic, data.summary, data.orderIndex, data.estimatedMinutes, data.status, data.contentVerified, moduleId],
     );

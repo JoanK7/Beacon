@@ -8,6 +8,8 @@ import { api, ApiError, errorMessage } from '@/lib/api';
 import { useApi } from '@/lib/use-api';
 import type { ContentStatus, EditableModule, EditableQuestion, EditableSection, MediaType } from '@/lib/types';
 import { Alert, Button, Card, ErrorState, Field, Input, Loading, Select, Textarea } from '@/components/ui';
+import { FormattedText } from '@/components/formatted-text';
+import { FormattingHelp } from '@/components/formatting-help';
 
 const EMPTY_MODULE: EditableModule = {
   slug: '',
@@ -183,7 +185,7 @@ function ModuleEditor({ initial, isNew }: { initial: EditableModule; isNew: bool
             <Plus className="size-4" aria-hidden /> Add section
           </Button>
         </div>
-        <p className="text-xs text-muted">Separate paragraphs with a blank line. Start lines with &quot;- &quot; for bullet points.</p>
+        <FormattingHelp />
         {m.sections.map((s, i) => (
           <fieldset key={s.id ?? `new-${i}`} className="space-y-3 rounded-xl border border-line p-4">
             <div className="flex items-center justify-between">
@@ -198,8 +200,16 @@ function ModuleEditor({ initial, isNew }: { initial: EditableModule; isNew: bool
               <Input id={`s-${i}-heading`} value={s.heading} onChange={(e) => setSection(i, { heading: e.target.value })} />
             </Field>
             <Field label="Body" id={`s-${i}-body`}>
-              <Textarea id={`s-${i}-body`} className="min-h-36" value={s.body} onChange={(e) => setSection(i, { body: e.target.value })} />
+              <Textarea id={`s-${i}-body`} className="min-h-36 font-mono text-sm" value={s.body} onChange={(e) => setSection(i, { body: e.target.value })} />
             </Field>
+            {s.body.trim() && (
+              <details className="rounded-xl border border-line p-3">
+                <summary className="cursor-pointer text-sm font-bold text-brand-700">Preview as learners see it</summary>
+                <div className="mt-3">
+                  <FormattedText text={s.body} />
+                </div>
+              </details>
+            )}
             <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
               <Field label="Media type" id={`s-${i}-mt`}>
                 <Select id={`s-${i}-mt`} value={s.mediaType || 'image'} onChange={(e) => setSection(i, { mediaType: e.target.value as MediaType })}>

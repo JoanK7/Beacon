@@ -1,22 +1,38 @@
-// Renders module text: blank lines separate paragraphs, and lines starting
-// with "- " become a bulleted list. Plain text only, so no HTML injection.
+// Renders lesson text written in Beacon's lesson markup (see lib/content-markup.ts):
+// paragraphs, bold key terms, bullet and step lists, callouts, flip cards, quick
+// checks and reveal prompts. Plain text only, so there is no HTML injection.
+import { parseBody, type Block } from '@/lib/content-markup';
+import { BulletList, Callout, FlipCards, QuickCheck, RevealPrompt, RichText, StepList } from './learning-blocks';
+
+function renderBlock(block: Block, key: number) {
+  switch (block.type) {
+    case 'heading':
+      return (
+        <h3 key={key} className="pt-1 text-base font-extrabold text-brand-900">
+          {block.text}
+        </h3>
+      );
+    case 'paragraph':
+      return (
+        <p key={key}>
+          <RichText text={block.text} highlight />
+        </p>
+      );
+    case 'bullets':
+      return <BulletList key={key} items={block.items} />;
+    case 'steps':
+      return <StepList key={key} items={block.items} />;
+    case 'callout':
+      return <Callout key={key} kind={block.kind} text={block.text} />;
+    case 'cards':
+      return <FlipCards key={key} cards={block.cards} />;
+    case 'check':
+      return <QuickCheck key={key} prompt={block.prompt} options={block.options} explanation={block.explanation} />;
+    case 'reveal':
+      return <RevealPrompt key={key} prompt={block.prompt} answer={block.answer} />;
+  }
+}
+
 export function FormattedText({ text }: { text: string }) {
-  const blocks = text.split(/\n\s*\n/);
-  return (
-    <div className="space-y-4 leading-relaxed text-ink">
-      {blocks.map((block, i) => {
-        const lines = block.split('\n').filter(Boolean);
-        if (lines.length && lines.every((l) => l.trim().startsWith('- '))) {
-          return (
-            <ul key={i} className="list-disc space-y-1.5 pl-5 marker:text-beacon-500">
-              {lines.map((l, j) => (
-                <li key={j}>{l.trim().slice(2)}</li>
-              ))}
-            </ul>
-          );
-        }
-        return <p key={i}>{block}</p>;
-      })}
-    </div>
-  );
+  return <div className="space-y-4 leading-relaxed text-ink">{parseBody(text).map(renderBlock)}</div>;
 }

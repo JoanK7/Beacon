@@ -1,7 +1,8 @@
 // Idempotent seed: safe to run repeatedly, including on a live database.
 // - Creates the starter accounts.
-// - Adds the Solid Minds-based modules and scenarios that are missing (never
-//   overwrites anything an admin has edited).
+// - Adds the Solid Minds-based modules and scenarios that are missing, and
+//   refreshes module text when its version in content/modules.ts goes up
+//   (never overwrites a module an admin has edited).
 // - Archives the old placeholder modules from the first prototype.
 // - Adds missing directory entries.
 import bcrypt from 'bcryptjs';
@@ -12,6 +13,8 @@ import { modules, SOURCE_NOTE } from '../content/modules';
 import { scenarios } from '../content/scenarios';
 import { providers, LEGACY_COUNSELLING_PLACEHOLDER } from '../content/providers';
 import { validateScript } from '../utils/scenario';
+import { validateMarkup } from '../content/markup-check';
+import type { ModuleContent } from '../content/types';
 
 type Log = (message: string) => void;
 
@@ -51,14 +54,20 @@ async function seedModules(client: PoolClient, log: Log) {
   if (archived.rowCount) log(`Archived ${archived.rowCount} placeholder module(s) from the prototype.`);
 
   for (const [i, m] of modules.entries()) {
+    const problems = m.sections.flatMap((s) => validateMarkup(s.body).map((p) => `"${s.heading}": ${p}`));
+    if (problems.length) throw new Error(`Module "${m.slug}" has formatting problems:\n- ${problems.join('\n- ')}`);
+
     const { rows } = await client.query<{ module_id: number }>(
-      `INSERT INTO training_modules (slug, title, topic, summary, order_index, estimated_minutes, status, content_verified, source_note)
-       VALUES ($1, $2, $3, $4, $5, $6, 'published', false, $7)
+      `INSERT INTO training_modules (slug, title, topic, summary, order_index, estimated_minutes, status, content_verified, source_note, content_version)
+       VALUES ($1, $2, $3, $4, $5, $6, 'published', false, $7, $8)
        ON CONFLICT (slug) DO NOTHING RETURNING module_id`,
-      [m.slug, m.title, m.topic, m.summary, i + 1, m.estimatedMinutes, SOURCE_NOTE],
+      [m.slug, m.title, m.topic, m.summary, i + 1, m.estimatedMinutes, SOURCE_NOTE, m.version],
     );
     const row = rows[0];
-    if (!row) continue; // already seeded; never overwrite admin edits
+    if (!row) {
+      await refreshModule(client, m, log);
+      continue;
+    }
     for (const [j, s] of m.sections.entries()) {
       await client.query('INSERT INTO module_sections (module_id, order_index, heading, body) VALUES ($1, $2, $3, $4)', [
         row.module_id,
@@ -73,6 +82,48 @@ async function seedModules(client: PoolClient, log: Log) {
     ]);
     log(`Seeded module "${m.title}".`);
   }
+}
+
+/**
+ * Copy newer authored text into a module that is already in the database.
+ * Skipped when an admin has edited the module, so reviewed wording is never
+ * replaced. Sections are updated in place, keeping their ids, so the record of
+ * which sections each learner has read is kept. Quizzes are left unchanged.
+ */
+async function refreshModule(client: PoolClient, m: ModuleContent, log: Log) {
+  const { rows } = await client.query<{ module_id: number; content_version: number; admin_edited: boolean }>(
+    'SELECT module_id, content_version, admin_edited FROM training_modules WHERE slug = $1',
+    [m.slug],
+  );
+  const existing = rows[0];
+  if (!existing || existing.admin_edited || existing.content_version >= m.version) return;
+
+  await client.query(
+    `UPDATE training_modules SET title = $1, topic = $2, summary = $3, estimated_minutes = $4, source_note = $5,
+       content_version = $6, updated_at = now()
+     WHERE module_id = $7`,
+    [m.title, m.topic, m.summary, m.estimatedMinutes, SOURCE_NOTE, m.version, existing.module_id],
+  );
+  const { rows: current } = await client.query<{ section_id: number }>(
+    'SELECT section_id FROM module_sections WHERE module_id = $1 ORDER BY order_index, section_id',
+    [existing.module_id],
+  );
+  for (const [j, s] of m.sections.entries()) {
+    const id = current[j]?.section_id;
+    if (id) {
+      await client.query('UPDATE module_sections SET order_index = $1, heading = $2, body = $3 WHERE section_id = $4', [j, s.heading, s.body, id]);
+    } else {
+      await client.query('INSERT INTO module_sections (module_id, order_index, heading, body) VALUES ($1, $2, $3, $4)', [
+        existing.module_id,
+        j,
+        s.heading,
+        s.body,
+      ]);
+    }
+  }
+  const surplus = current.slice(m.sections.length).map((r) => r.section_id);
+  if (surplus.length) await client.query('DELETE FROM module_sections WHERE section_id = ANY($1::int[])', [surplus]);
+  log(`Updated module "${m.title}" to content version ${m.version}.`);
 }
 
 async function seedScenarios(client: PoolClient, log: Log) {
