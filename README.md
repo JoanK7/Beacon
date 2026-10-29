@@ -252,12 +252,19 @@ You can also register a new peer-supporter account from the landing page.
 ### Testing
 
 ```bash
-# API: 79 unit and integration tests (93% line coverage) against the test database
+# API: 96 unit and integration tests (94% line coverage) against the test database
 cd server && npm test
 
 # End-to-end: start the stack first (API + `npm run build && npm start` in client), then
 cd client && npm run test:e2e
+# ...or on all 7 browser/device profiles (Chrome, Firefox, Safari engine; phones, tablet, desktop)
+E2E_ALL_BROWSERS=1 npm run test:e2e
 ```
+
+**Full testing report, results and where to find them: [docs/testing.md](docs/testing.md).**
+Every push also runs the *Compatibility & performance* workflow: the 7 journeys
+on 7 device/browser profiles, Lighthouse on key pages (accessibility 100 on all)
+and an API load test with 200 concurrent connections (0 errors).
 
 The integration tests cover every functional requirement: auth and roles,
 module completion, test-out and answer secrecy, badges awarded once, scenario
@@ -299,6 +306,7 @@ rollback, backups and monitoring are covered in **[docs/deployment.md](docs/depl
 | [docs/architecture.md](docs/architecture.md) | Three-layer architecture, service→code map, sequence diagram, security controls |
 | [docs/database-schema.md](docs/database-schema.md) | ERD (Mermaid), tables, changes from the proposal ERD |
 | [docs/api.md](docs/api.md) | REST endpoints and payloads |
+| [docs/testing.md](docs/testing.md) | Testing strategies, how to run them, results (compatibility, performance) and where to find them |
 | [docs/deployment.md](docs/deployment.md) | Full deployment plan and operations |
 
 ## Privacy & ethics by design
