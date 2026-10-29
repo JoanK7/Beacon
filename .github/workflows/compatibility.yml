@@ -1,0 +1,135 @@
+name: Compatibility & performance
+
+# Evidence that Beacon works across browsers and devices, and how fast it is.
+# - compatibility: every end-to-end journey on 7 browser/device profiles,
+#   each in its own job (Chromium, Firefox and WebKit engines).
+# - performance: Lighthouse on key pages (mobile, slow 4G) and an API load test
+#   with 200 concurrent connections (NFR2, NFR5).
+# Results: the run's Summary page (pass/fail per device, performance tables)
+# and the downloadable reports under "Artifacts".
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: compat-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgres://beacon:beacon@localhost:5432/beacon
+  API_URL: http://localhost:4000
+
+jobs:
+  compatibility:
+    name: E2E on ${{ matrix.project }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { project: mobile, browser: chromium } # Pixel 7, Chrome
+          - { project: desktop, browser: chromium } # Desktop Chrome
+          - { project: small-android, browser: chromium } # Galaxy S8, 360px wide
+          - { project: firefox, browser: firefox } # Desktop Firefox
+          - { project: webkit-safari, browser: webkit } # Desktop Safari engine
+          - { project: iphone-13, browser: webkit } # iPhone 13, Safari engine
+          - { project: ipad, browser: webkit } # iPad, Safari engine
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: beacon
+          POSTGRES_PASSWORD: beacon
+          POSTGRES_DB: beacon
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U beacon" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Install
+        run: |
+          npm ci --prefix server
+          npm ci --prefix client
+          npx --prefix client playwright install --with-deps ${{ matrix.browser }}
+      - name: Build and start the API and web app
+        run: |
+          npm --prefix server run build
+          nohup npm --prefix server run start:prod > api.log 2>&1 &
+          npm --prefix client run build
+          nohup npm --prefix client start > web.log 2>&1 &
+          npx -y wait-on@8.0.1 --timeout 60000 http://localhost:4000/api/health http://localhost:3000
+      - name: Run every journey on ${{ matrix.project }}
+        run: npx playwright test --project=${{ matrix.project }}
+        working-directory: client
+        env:
+          E2E_ALL_BROWSERS: "1"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report-${{ matrix.project }}
+          path: client/playwright-report/
+          retention-days: 30
+      - if: failure()
+        run: cat api.log web.log
+
+  performance:
+    name: Lighthouse + API load test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: beacon
+          POSTGRES_PASSWORD: beacon
+          POSTGRES_DB: beacon
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U beacon" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Build and start the API and web app (production builds)
+        run: |
+          npm ci --prefix server
+          npm ci --prefix client
+          npm --prefix server run build
+          nohup npm --prefix server run start:prod > api.log 2>&1 &
+          npm --prefix client run build
+          nohup npm --prefix client start > web.log 2>&1 &
+          npx -y wait-on@8.0.1 --timeout 60000 http://localhost:4000/api/health http://localhost:3000
+      - name: Sign in as the demo peer (for pages behind login)
+        run: |
+          curl -sf -c jar.txt -H 'Content-Type: application/json' \
+            -d '{"username":"demo_peer","password":"BeaconPeer#2026"}' http://localhost:4000/api/auth/login > /dev/null
+          echo "TOKEN=$(awk '$6 == "beacon_session" { print $7 }' jar.txt)" >> "$GITHUB_ENV"
+      - name: Lighthouse (mobile, simulated slow 4G)
+        run: |
+          mkdir -p perf
+          for page in "/" "/login" "/dashboard" "/learn/peers-model" "/directory"; do
+            name=$(echo "$page" | sed 's#^/$#home#; s#^/##; s#/#-#g')
+            npx -y lighthouse@12.6.0 "http://localhost:3000$page" --quiet \
+              --chrome-flags="--headless=new --no-sandbox" \
+              --extra-headers "{\"Cookie\":\"beacon_session=$TOKEN\"}" \
+              --output=json --output=html --output-path="perf/lh-$name"
+          done
+      - name: API load test (200 concurrent connections, 20 s each)
+        run: |
+          npx -y autocannon@8.0.0 -c 200 -d 20 -j http://localhost:4000/api/health > perf/load-health.json
+          npx -y autocannon@8.0.0 -c 200 -d 20 -j -H "Authorization=Bearer $TOKEN" http://localhost:4000/api/modules > perf/load-modules.json
+          npx -y autocannon@8.0.0 -c 200 -d 20 -j -H "Authorization=Bearer $TOKEN" "http://localhost:4000/api/providers?q=counselling" > perf/load-directory.json
+      - name: Summarise results
+        run: node .github/scripts/perf-summary.mjs perf
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-reports
+          path: perf/
+          retention-days: 30
+      - if: failure()
+        run: cat api.log web.log
