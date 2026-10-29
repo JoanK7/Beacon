@@ -65,7 +65,7 @@ flowchart LR
 
 1. Every push/PR runs **CI**: API unit and integration tests against a real Postgres (with coverage), frontend lint and production build, then Playwright end-to-end tests of the full stack.
 2. Merging to `main` triggers **automatic deploys** on Vercel and Render. (Optionally enable "deploy only if CI passes" in Render, and Vercel's GitHub checks.)
-3. Database changes ship as new numbered files in `server/src/db/migrations/` and are applied automatically on start; migrations are forward-only.
+3. Database changes ship as new numbered files in `server/migrations/` and are applied automatically on start; migrations are forward-only.
 
 ## Operations
 

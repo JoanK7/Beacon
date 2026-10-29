@@ -18,20 +18,21 @@ Progressive Web App that gives them:
 
 | Feature | Requirement |
 |---|---|
-| 🔐 Pseudonymous sign-up and secure session-based login | FR1 |
-| 📚 Six training modules following the Solid Minds *PEERS Circles of Care* curriculum (the PEERS model, mental health literacy, psychological first aid, boundaries & confidentiality, referral, self-care), with a **Listen** button that reads any section aloud | FR2 |
-| 📈 Section-by-section progress tracking; modules can be taken in any order | FR3 |
-| 💬 **Practice conversations** (the gamification centrepiece): branching role-plays with a simulated peer. Every response shows how it lands and Bea explains why; unhelpful choices can be retried, so nobody can fail | FR4 |
-| 🧭 **Skill check** (placement + pre/post knowledge measure for RQ3) that suggests which modules to focus on and then reviews every answer (correct answer plus explanation), and **test-out**: pass a module's quiz without reading it to earn the badge | FR4 |
-| 🏅 Low-pressure gamification: quizzes with unlimited retries, a learning journey path, badge stickers, points and levels, gentle celebrations, and Bea the mascot (no leaderboards or streaks) | FR4 |
-| 📍 A searchable, filterable referral directory of campus and local services, with tap-to-call | FR5 |
-| 📋 Support-session log with optional referral to a directory service (notes encrypted) | FR6 |
-| ❤️ Self-care check-ins with a mood rating and private reflection (encrypted) | FR7 |
-| 💬 Anonymous System Usability Scale (SUS) feedback | FR8 |
-| 🛠️ Content Administrator workspace: create, edit, publish and archive modules, quizzes and providers; publish or hide scenarios | FR9 |
-| 📊 Programme Coordinator cohort dashboard: aggregates only (incl. skill-check before/after and practice completions), small groups suppressed | FR10 |
+| Pseudonymous sign-up and secure session-based login | FR1 |
+| Six training modules following the Solid Minds *PEERS Circles of Care* curriculum (the PEERS model, mental health literacy, psychological first aid, boundaries & confidentiality, referral, self-care), with a **Listen** button that reads any section aloud | FR2 |
+| Visual, interactive lessons: bold key terms, callouts (Bea's tips, *Remember*, *Watch out*), step lists, tap-to-flip cards, *Check yourself* questions and *Think, then reveal* prompts. Practice only: nothing is graded or blocks moving on | FR2 |
+| Section-by-section progress tracking; modules can be taken in any order | FR3 |
+| **Practice conversations** (the gamification centrepiece): branching role-plays with a simulated peer. Every response shows how it lands and Bea explains why; unhelpful choices can be retried, so nobody can fail | FR4 |
+| **Skill check** (placement + pre/post knowledge measure for RQ3) that suggests which modules to focus on and then reviews every answer (correct answer plus explanation), and **test-out**: pass a module's quiz without reading it to earn the badge | FR4 |
+| Low-pressure gamification: quizzes with unlimited retries, a learning journey path, badge stickers, points and levels, gentle celebrations, and Bea the mascot (no leaderboards or streaks) | FR4 |
+| A searchable, filterable referral directory of campus and local services, with tap-to-call | FR5 |
+| Support-session log with optional referral to a directory service (notes encrypted) | FR6 |
+| Self-care check-ins with a mood rating and private reflection (encrypted) | FR7 |
+| Anonymous System Usability Scale (SUS) feedback | FR8 |
+| Content Administrator workspace: create, edit, publish and archive modules, quizzes and providers; publish or hide scenarios | FR9 |
+| Programme Coordinator cohort dashboard: aggregates only (incl. skill-check before/after and practice completions), small groups suppressed | FR10 |
 
-> ⚠️ **Pilot content notice.** The modules and scenarios are **adapted from the
+> **Pilot content notice.** The modules and scenarios are **adapted from the
 > training materials Solid Minds Counselling Clinic used to train ALU peer
 > counsellors**, and are pending Solid Minds' final review. Unverified modules
 > show a *"Pending expert review"* banner naming the source, and unverified
@@ -46,6 +47,10 @@ Progressive Web App that gives them:
 | Mobile: home | Mobile: learning journey | Mobile: module | Desktop: badge collection |
 |---|---|---|---|
 | ![Home](docs/screenshots/mobile-03-dashboard.png) | ![Journey](docs/screenshots/mobile-04-modules.png) | ![Module](docs/screenshots/mobile-05-module.png) | ![Progress](docs/screenshots/desktop-12-progress.png) |
+
+| Mobile: interactive lesson | Desktop: interactive lesson | Desktop: admin editor with preview | |
+|---|---|---|---|
+| ![Lesson blocks](docs/screenshots/mobile-22-lesson-blocks.png) | ![Lesson blocks](docs/screenshots/desktop-22-lesson-blocks.png) | ![Editor](docs/screenshots/desktop-15-admin-editor.png) | |
 
 | Mobile: practice conversations | Mobile: scenario player | Mobile: skill check results | Desktop: scenario ending |
 |---|---|---|---|
@@ -227,7 +232,7 @@ You can also register a new peer-supporter account from the landing page.
 | server | `npm run typecheck` | Type-check without emitting files |
 | server | `npm run build` / `npm start` | Compile to `dist/` / run the compiled API |
 | server | `npm run start:prod` | Migrate, seed and start from `dist/` (used in production and CI) |
-| server | `npm test` | Unit tests, plus integration tests when `TEST_DATABASE_URL` is set (⚠️ that database is wiped) |
+| server | `npm test` | Unit tests, plus integration tests when `TEST_DATABASE_URL` is set ( that database is wiped) |
 | server | `npm run test:coverage` | Tests with a coverage report (fails below 60% lines, per NFR6) |
 | client | `npm run typecheck` | Generate Next.js route types, then type-check |
 | client | `npm run lint` | ESLint (Next.js core-web-vitals + TypeScript rules) |

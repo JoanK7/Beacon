@@ -92,7 +92,48 @@ image files, so it stays light on 3G).
 | **Level and points** | A sunshine level circle and a progress bar on Home and Progress. Points come only from learning. |
 | **Badge stickers** | Competency icon on its tint with a sunshine rim once collected. Locked badges read "Not yet, whenever you're ready". |
 
-## 6. Core components
+## 6. Learning blocks (lesson markup)
+
+Lessons are written as plain text with a small markup, so the admin editor stays
+a simple text box and nothing is ever rendered as HTML. The parser is
+`client/lib/content-markup.ts`, the components are `client/components/learning-blocks.tsx`,
+and `server/src/content/markup-check.ts` rejects badly formed blocks in tests and at deploy.
+The admin editor shows a **Formatting help** table and a live **Preview** for every section.
+
+Leave a blank line between blocks.
+
+| Type this | Learners see | Use it for |
+|---|---|---|
+| `**key term**` | Bold term with a soft sunshine highlighter | The one or two ideas per paragraph worth remembering |
+| `- item` | Sunshine-dot bullet list | Short, unordered points |
+| `1. step` | Numbered stepping stones joined by a line | Ideas that come in order (help-seeking order, the continuum, risk steps) |
+| `> Tip: …` | **Bea's tip**, with Bea beside it (sunshine) | Practical advice |
+| `> Remember: …` | Star callout (mint) | The section's key takeaway, usually last |
+| `> Example: …` | Quote callout (sky) | Phrases to say, survey findings, real voices |
+| `> Watch out: …` | Warning callout (coral) | Common mistakes and limits ("PFA is **not**…") |
+| `> Try this: …` | Sparkle callout (lavender) | A small action to take |
+| `+ Front \| Back` (one per line) | Tap-to-flip cards with a "2 of 5 flipped" counter | Acronyms (PEERS, Look/Listen/Link), definitions, contrasts |
+| `? Question` / `[ ] option` / `[x] option` / `= why` | **Check yourself**: wrong picks say "Not quite. Have another go"; the right one shows the explanation | One quick recall question per module, at most one per section |
+| `?? Prompt` / `= suggested answer` | **Think, then reveal**: lavender card with "Show a suggested answer" | Reflection on a realistic situation |
+
+**Why.** These follow well-established multimedia-learning principles (Mayer):
+*signalling* (highlighting key terms and takeaways), *segmenting* (short chunks,
+step lists and cards instead of walls of text) and *retrieval practice* (recalling
+an answer before seeing it). They respond to pilot feedback that the modules felt
+plain, while keeping the low-pressure rules above: checks are never graded or
+saved, retries are unlimited, and **Mark as read** never waits for them.
+
+**Accessibility.** Cards and reveals are buttons with `aria-expanded`; check
+results are announced through an `aria-live` region; the card flip is removed under
+reduced motion; **Listen** reads callouts, both sides of every card and each
+question with its options, but never the answers.
+
+**Changing module text.** Edit `server/src/content/modules.ts` and bump the
+module's `version`. On the next deploy the seed copies the new text into the
+database in place (same sections, so reading progress is kept), unless an admin
+has edited that module in the Admin screens. Keep the number of sections the same.
+
+## 7. Core components
 
 | Component | Notes |
 |---|---|
@@ -103,7 +144,7 @@ image files, so it stays light on 3G).
 | `EmptyState` | Accepts `art={<Bea />}` and kind copy ("No sessions yet, and that's okay!"). |
 | Bottom tab bar | Five items; the active tab gets a mint pill behind its icon. |
 
-## 7. Accessibility checklist (NFR3)
+## 8. Accessibility checklist (NFR3)
 
 - Keyboard reachable; sunshine focus ring; "Skip to content" link.
 - Landmarks, one `h1` per page, labelled controls, `fieldset/legend` for radio groups.
@@ -111,7 +152,7 @@ image files, so it stays light on 3G).
 - `prefers-reduced-motion` disables bobbing, pop-ins and confetti (verified by a Playwright test).
 - Charts print values as text and offer a Table view.
 
-## 8. Voice & tone
+## 9. Voice & tone
 
 Warm, encouraging, never clinical or judgemental:
 - "Welcome back! No rush."

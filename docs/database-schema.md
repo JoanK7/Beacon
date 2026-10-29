@@ -54,6 +54,8 @@ erDiagram
         int estimated_minutes
         text status "draft | published | archived"
         bool content_verified
+        int content_version "authored text last applied"
+        bool admin_edited
     }
     MODULE_SECTIONS {
         int section_id PK
@@ -207,6 +209,7 @@ Scale responses are anonymous by construction (FR8).
 | Added `consent_at` | Records informed consent at registration |
 | Added `scenarios`, `scenario_completions`, `skill_check_attempts` (migration 002) | Scenario role-plays and the skill check (supervisor feedback); the skill check also gives the pre/post knowledge measure for RQ3 |
 | Added `training_modules.source_note` | Records where content comes from (the Solid Minds training) until it is verified |
+| Added `training_modules.content_version` and `admin_edited` (migration 003) | Lets a deploy refresh the authored lesson text (e.g. the interactive reformatting) in place, keeping section ids and reading progress, while never overwriting a module an admin has edited |
 
 ## Integrity & performance
 
