@@ -67,7 +67,9 @@ export function calculateSus(answers: number[]): number {
 
 // Points reward learning activity only. Logging support sessions is deliberately
 // NOT gamified so there is never an incentive to inflate session counts.
-export const POINTS = { sectionViewed: 10, moduleCompleted: 50, badgeEarned: 100, scenarioCompleted: 40 } as const;
+// Sections only earn points when read at a realistic pace (see
+// domain/learning-integrity.ts), so clicking through earns nothing.
+export const POINTS = { sectionViewed: 10, moduleCompleted: 50, badgeEarned: 100, scenarioCompleted: 40, storyRead: 15 } as const;
 
 export const LEVELS = [
   { name: 'Newcomer', min: 0 },
@@ -78,18 +80,21 @@ export const LEVELS = [
 ] as const;
 
 export interface PointInputs {
+  /** Sections read at a realistic pace (rushed reads earn nothing). */
   sectionsViewed?: number;
   modulesCompleted?: number;
   badgesEarned?: number;
   scenariosCompleted?: number;
+  storiesRead?: number;
 }
 
-export function calculatePoints({ sectionsViewed = 0, modulesCompleted = 0, badgesEarned = 0, scenariosCompleted = 0 }: PointInputs): number {
+export function calculatePoints({ sectionsViewed = 0, modulesCompleted = 0, badgesEarned = 0, scenariosCompleted = 0, storiesRead = 0 }: PointInputs): number {
   return (
     sectionsViewed * POINTS.sectionViewed +
     modulesCompleted * POINTS.moduleCompleted +
     badgesEarned * POINTS.badgeEarned +
-    scenariosCompleted * POINTS.scenarioCompleted
+    scenariosCompleted * POINTS.scenarioCompleted +
+    storiesRead * POINTS.storyRead
   );
 }
 

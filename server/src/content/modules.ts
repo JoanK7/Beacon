@@ -4,9 +4,10 @@
 //   - Day 2: Mental Health 101 & the Foundations of Responsible Peer Counseling
 //   - Peer Support Programs for Student Wellbeing
 //   - Group discussion briefs (safe spaces, caring for the carer, the club)
-// Wording is adapted for short mobile lessons and is pending Solid Minds' final
-// review (content_verified = false until they approve it in the Admin screens).
+// Wording is adapted for short mobile lessons and has been reviewed with Solid
+// Minds. Quiz and skill-check questions live in ./question-banks.ts.
 import type { ModuleContent } from './types';
+import { quizBanks, skillCheckBanks } from './question-banks';
 
 // Section bodies use the lesson markup (bold terms, callouts, flip cards,
 // quick checks); see docs/design/style-guide.md. Blocks are separated by a
@@ -15,7 +16,7 @@ const blocks = (...b: string[]) => b.join('\n\n');
 const lines = (...l: string[]) => l.join('\n');
 
 export const SOURCE_NOTE =
-  'Adapted from the Solid Minds Counselling Clinic PEERS Circles of Care training (ALU, May 2026). Pending final review by Solid Minds.';
+  'Adapted from the Solid Minds Counselling Clinic PEERS Circles of Care training (ALU, May 2026).';
 
 export const modules: ModuleContent[] = [
   {
@@ -24,7 +25,7 @@ export const modules: ModuleContent[] = [
     topic: 'Role clarity',
     summary: 'Why peer support exists at ALU, what care means, and what your role is (and is not).',
     estimatedMinutes: 12,
-    version: 2,
+    version: 3,
     sections: [
       {
         heading: 'Why peer support at ALU?',
@@ -135,46 +136,8 @@ export const modules: ModuleContent[] = [
         ),
       },
     ],
-    quiz: [
-      {
-        prompt: 'In the PEERS model, care is best described as…',
-        options: [
-          'Fixing someone’s problems as quickly as possible',
-          'Relational accompaniment that widens support as needs increase, without breaking connection',
-          'Professional treatment provided by a peer',
-        ],
-        answerIndex: 1,
-        explanation: 'Care is staying with someone in ways that preserve dignity, share responsibility and widen support when needed.',
-      },
-      {
-        prompt: 'Which of these is part of a peer counselor’s role?',
-        options: ['Checking in and helping care widen', 'Diagnosing what a peer is going through', 'Managing a crisis alone'],
-        answerIndex: 0,
-        explanation: 'You notice, check in, stay present and help care widen. Diagnosis and crisis management belong with professionals.',
-      },
-      {
-        prompt: 'What does the "R" in PEERS stand for?',
-        options: ['Responsibility for outcomes', 'Rules and procedures', 'Referral with care'],
-        answerIndex: 2,
-        explanation: 'Referral with care means widening support while staying connected appropriately.',
-      },
-      {
-        prompt: 'Who holds clinical responsibility in the programme?',
-        options: ['The peer counselor', 'The Wellness Center', 'The student’s friends'],
-        answerIndex: 1,
-        explanation: 'Clinical responsibility remains with the Wellness Center. No peer holds risk alone.',
-      },
-      {
-        prompt: 'Which of these could count as success in peer counseling?',
-        options: [
-          'Making the student’s struggles disappear',
-          'Being available to the student at any hour',
-          'The student felt heard, less alone, and took one small positive step',
-        ],
-        answerIndex: 2,
-        explanation: 'Success is often small and relational: feeling heard, less alone, and more open to support.',
-      },
-    ],
+    quiz: quizBanks['peers-model']!,
+    skillCheck: skillCheckBanks['peers-model']!,
   },
   {
     slug: 'mental-health-101',
@@ -182,7 +145,7 @@ export const modules: ModuleContent[] = [
     topic: 'Mental health literacy',
     summary: 'The mental health continuum, and how to tell stress, distress and crisis apart.',
     estimatedMinutes: 12,
-    version: 2,
+    version: 3,
     sections: [
       {
         heading: 'What we mean by mental health',
@@ -274,38 +237,8 @@ export const modules: ModuleContent[] = [
         ),
       },
     ],
-    quiz: [
-      {
-        prompt: 'Before exams, a student is irritable, procrastinating and sleeping badly, but still managing. Where are they on the continuum?',
-        options: ['Healthy', 'Reacting', 'Ill'],
-        answerIndex: 1,
-        explanation: 'Irritability, procrastination and poor sleep are common, reversible signs of the Reacting zone.',
-      },
-      {
-        prompt: 'Which type of stress comes from intense, prolonged adversity without support?',
-        options: ['Toxic stress', 'Positive stress', 'Tolerable stress'],
-        answerIndex: 0,
-        explanation: 'Toxic stress is intense and prolonged, without support. Healthy relationships can make stress more tolerable.',
-      },
-      {
-        prompt: 'Which zones of the continuum usually call for professional care?',
-        options: ['Healthy and Reacting', 'Only Healthy', 'Injured and Ill'],
-        answerIndex: 2,
-        explanation: 'Injured and Ill involve significant impairment and usually need professional care.',
-      },
-      {
-        prompt: 'Which statement about stress is true?',
-        options: ['Stress is always a sign of illness', 'Stress is cumulative, and early support helps prevent crisis', 'Stress should be ignored until it passes'],
-        answerIndex: 1,
-        explanation: 'Stress builds up over time. Overload is normal, and early support prevents crisis.',
-      },
-      {
-        prompt: 'Which of these can be a sign of distress?',
-        options: ['Avoiding friends and responsibilities', 'Enjoying usual activities', 'Sleeping well and feeling rested'],
-        answerIndex: 0,
-        explanation: 'Withdrawing from friends and responsibilities is a common sign someone may be struggling.',
-      },
-    ],
+    quiz: quizBanks['mental-health-101']!,
+    skillCheck: skillCheckBanks['mental-health-101']!,
   },
   {
     slug: 'psychological-first-aid',
@@ -313,7 +246,7 @@ export const modules: ModuleContent[] = [
     topic: 'Active listening',
     summary: 'Kind, practical support for someone in distress, using the three PFA actions.',
     estimatedMinutes: 15,
-    version: 2,
+    version: 3,
     sections: [
       {
         heading: 'What is Psychological First Aid?',
@@ -397,42 +330,8 @@ export const modules: ModuleContent[] = [
         ),
       },
     ],
-    quiz: [
-      {
-        prompt: 'In PFA, what is the first thing to LOOK for?',
-        options: ['Who caused the situation', 'Safety: is the person and the environment safe?', 'Whether they will pass their exams'],
-        answerIndex: 1,
-        explanation: 'Safety comes first: the person’s physical safety and the safety of the environment.',
-      },
-      {
-        prompt: 'Which of these is part of active listening?',
-        options: ['Planning your advice while they talk', 'Finishing their sentences to show you understand', 'Being fully present, including respecting silence'],
-        answerIndex: 2,
-        explanation: 'Active listening means full attention, verbal and non-verbal, and respecting when someone does not want to talk.',
-      },
-      {
-        prompt: 'Which of these is NOT Psychological First Aid?',
-        options: ['Pressuring someone to share the details of what happened', 'Helping someone feel safe and calm', 'Connecting someone to campus services'],
-        answerIndex: 0,
-        explanation: 'PFA never forces or pressures anyone to talk. It is about being ready to listen if they want to.',
-      },
-      {
-        prompt: 'Which is a good way to help calm someone in distress?',
-        options: ['Tell them firmly to calm down', 'Keep your voice calm and soft, and encourage slow breathing', 'Raise your voice so they focus on you'],
-        answerIndex: 1,
-        explanation: 'A calm, soft tone and slow breathing help someone settle.',
-      },
-      {
-        prompt: 'In PFA, LINK means…',
-        options: [
-          'Connecting someone to information, campus services and social support',
-          'Sharing their story with friends so they can help',
-          'Linking them to online advice articles only',
-        ],
-        answerIndex: 0,
-        explanation: 'LINK connects people with services and their own support networks, with their consent.',
-      },
-    ],
+    quiz: quizBanks['psychological-first-aid']!,
+    skillCheck: skillCheckBanks['psychological-first-aid']!,
   },
   {
     slug: 'boundaries-confidentiality',
@@ -440,7 +339,7 @@ export const modules: ModuleContent[] = [
     topic: 'Boundaries',
     summary: 'What confidentiality means, where it ends, and how healthy boundaries protect everyone.',
     estimatedMinutes: 12,
-    version: 2,
+    version: 3,
     sections: [
       {
         heading: 'What confidentiality means',
@@ -513,40 +412,8 @@ export const modules: ModuleContent[] = [
         ),
       },
     ],
-    quiz: [
-      {
-        prompt: 'A peer asks you to promise you will never tell anyone what they are about to share. What is the best response?',
-        options: [
-          'Promise, so they feel able to trust you',
-          'Explain kindly that you keep things private unless you are worried about their safety',
-          'Refuse to listen until they agree you can tell others',
-        ],
-        answerIndex: 1,
-        explanation: 'Be honest about the limits of confidentiality before they share. Never promise secrecy you may not be able to keep.',
-      },
-      {
-        prompt: 'When must you involve others immediately?',
-        options: ['A peer is stressed about a deadline', 'A peer had an argument with a friend', 'A peer talks about hurting themselves'],
-        answerIndex: 2,
-        explanation: 'Talk of self-harm, feeling unsafe, extreme distress or a dangerous secret means involving the Wellness Center straight away.',
-      },
-      {
-        prompt: '"No peer holds risk alone" means…',
-        options: [
-          'Responsibility for risk is shared with the Wellness Center',
-          'You should handle risky situations quietly by yourself',
-          'Risky situations are not your concern',
-        ],
-        answerIndex: 0,
-        explanation: 'Clinical and safeguarding responsibility sits with the Wellness Center. You are never expected to carry risk alone.',
-      },
-      {
-        prompt: 'Being available to a peer at all hours is…',
-        options: ['A sign of a great peer counselor', 'Not expected, and it can harm you and the support you give', 'Required by the programme'],
-        answerIndex: 1,
-        explanation: 'Success is not being available all the time. Healthy boundaries keep support sustainable.',
-      },
-    ],
+    quiz: quizBanks['boundaries-confidentiality']!,
+    skillCheck: skillCheckBanks['boundaries-confidentiality']!,
   },
   {
     slug: 'referral-with-care',
@@ -554,7 +421,7 @@ export const modules: ModuleContent[] = [
     topic: 'Referral',
     summary: 'Recognise when care needs to widen, and connect peers to help without letting go.',
     estimatedMinutes: 12,
-    version: 2,
+    version: 3,
     sections: [
       {
         heading: 'When care needs to widen',
@@ -617,36 +484,8 @@ export const modules: ModuleContent[] = [
         ),
       },
     ],
-    quiz: [
-      {
-        prompt: 'Which situation suggests that care needs to widen?',
-        options: ['A peer had one bad day', 'A peer’s distress persists and their functioning is declining', 'A peer wants to vent about a group project'],
-        answerIndex: 1,
-        explanation: 'Persistent distress, declining functioning, uncertain safety, or feeling out of your depth all mean care should widen.',
-      },
-      {
-        prompt: 'A peer talks about suicide. What are the right steps?',
-        options: [
-          'Stay calm, do not promise secrecy, contact the Wellness Center immediately, and stay connected',
-          'Keep it between you so they keep trusting you',
-          'Wait a few days to see if the feeling passes',
-        ],
-        answerIndex: 0,
-        explanation: 'These are the four steps from the training. Contact emergency services first if someone is in immediate danger.',
-      },
-      {
-        prompt: 'Referral means…',
-        options: ['Handing someone over and stepping away', 'Telling them to find help themselves', 'Adding support while staying connected appropriately'],
-        answerIndex: 2,
-        explanation: 'Referral adds support; it does not remove relationship.',
-      },
-      {
-        prompt: 'Who holds safeguarding responsibility?',
-        options: ['The Wellness Center', 'The peer counselor', 'The student’s classmates'],
-        answerIndex: 0,
-        explanation: 'The Wellness Center holds safeguarding and safety responsibility and supports peer supporters.',
-      },
-    ],
+    quiz: quizBanks['referral-with-care']!,
+    skillCheck: skillCheckBanks['referral-with-care']!,
   },
   {
     slug: 'caring-for-yourself',
@@ -654,7 +493,7 @@ export const modules: ModuleContent[] = [
     topic: 'Self-care',
     summary: 'Notice when you are carrying too much, and how to step back and stay well.',
     estimatedMinutes: 10,
-    version: 2,
+    version: 3,
     sections: [
       {
         heading: 'Peer support should not harm you',
@@ -713,35 +552,7 @@ export const modules: ModuleContent[] = [
         ),
       },
     ],
-    quiz: [
-      {
-        prompt: 'Which of these is a warning sign that you are carrying too much?',
-        options: ['Feeling guilty when you rest', 'Enjoying time with friends', 'Sleeping well'],
-        answerIndex: 0,
-        explanation: 'Guilt when resting, constant worry about someone, and lost sleep are signs you need support too.',
-      },
-      {
-        prompt: 'When you notice warning signs in yourself, you should…',
-        options: ['Push through, because others need you', 'Step back and seek support for yourself', 'Stop replying to everyone without explanation'],
-        answerIndex: 1,
-        explanation: 'Warning signs mean you need support too and should not continue alone. Step back with care.',
-      },
-      {
-        prompt: '"Sustainability is institutional, not individual" means…',
-        options: [
-          'You personally must keep everyone going',
-          'Peer support only lasts if one person leads it',
-          'The programme and Wellness Center, not you alone, keep support going',
-        ],
-        answerIndex: 2,
-        explanation: 'Support is shared. The institution, not any single peer, carries the responsibility.',
-      },
-      {
-        prompt: 'Which is a healthy thing to say when you need to step back?',
-        options: ['"I’ll always be here, any time you need."', '"Let’s involve someone else."', '"Don’t message me again."'],
-        answerIndex: 1,
-        explanation: 'Stepping back kindly, and widening support, protects both of you.',
-      },
-    ],
+    quiz: quizBanks['caring-for-yourself']!,
+    skillCheck: skillCheckBanks['caring-for-yourself']!,
   },
 ];

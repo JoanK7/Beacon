@@ -57,6 +57,15 @@ export interface ScenarioContent {
   script: ScenarioScript;
 }
 
+/** A multiple-choice question. `id` is stable so attempts can refer to it. */
+export interface QuestionContent {
+  id: string;
+  prompt: string;
+  options: string[];
+  answerIndex: number;
+  explanation: string;
+}
+
 export interface ModuleContent {
   slug: string;
   title: string;
@@ -71,6 +80,19 @@ export interface ModuleContent {
   version: number;
   /** Section bodies use the lesson markup described in docs/design/style-guide.md. */
   sections: { heading: string; body: string }[];
-  /** The first two questions double as the skill-check items for this module. */
-  quiz: { prompt: string; options: string[]; answerIndex: number; explanation: string }[];
+  /** Quiz question bank. Each attempt draws `questionsPerAttempt` of them. */
+  quiz: QuestionContent[];
+  /** Skill-check questions for this module. Never used in the quiz. */
+  skillCheck: QuestionContent[];
+}
+
+export interface StoryContent {
+  slug: string;
+  title: string;
+  /** Short paragraphs separated by blank lines (lesson markup allowed). */
+  body: string;
+  /** A question to think about after reading. */
+  reflection: string;
+  /** The module this story connects to. */
+  moduleSlug: string;
 }

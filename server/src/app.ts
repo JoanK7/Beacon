@@ -21,6 +21,8 @@ import reflectionsRoutes from './routes/reflections.routes';
 import feedbackRoutes from './routes/feedback.routes';
 import adminRoutes from './routes/admin.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import storiesRoutes from './routes/stories.routes';
+import communityRoutes from './routes/community.routes';
 
 export function createApp() {
   const app = express();
@@ -56,6 +58,8 @@ export function createApp() {
   app.use('/api/sessions', requireAuth, sessionsRoutes);
   app.use('/api/reflections', requireAuth, reflectionsRoutes);
   app.use('/api/feedback', requireAuth, feedbackRoutes);
+  app.use('/api/stories', requireAuth, storiesRoutes);
+  app.use('/api/community', requireAuth, communityRoutes);
   app.use('/api/admin', requireAuth, requireRole('admin'), adminRoutes);
   app.use('/api/dashboard', requireAuth, requireRole('coordinator', 'admin'), dashboardRoutes);
 

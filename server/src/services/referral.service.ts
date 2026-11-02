@@ -12,6 +12,8 @@ export interface ProviderRow {
   district: string;
   location: string;
   contact: string;
+  email: string;
+  website: string;
   hours: string;
   verified: boolean;
   archived: boolean;
@@ -28,6 +30,8 @@ export function toProvider(r: ProviderRow) {
     district: r.district,
     location: r.location,
     contact: r.contact,
+    email: r.email,
+    website: r.website,
     hours: r.hours,
     verified: r.verified,
     archived: r.archived,

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as adminService from '../services/admin.service';
 import * as referralService from '../services/referral.service';
+import * as communityService from '../services/community.service';
 import * as schemas from '../schemas';
 import { validate, getValid } from '../middleware/validate';
 
@@ -47,6 +48,15 @@ router.put('/providers/:id', byId, validate(schemas.providerInput), async (req, 
 });
 router.patch('/providers/:id/archive', byId, validate(schemas.archiveToggle), async (req, res) => {
   await adminService.setProviderArchived(idOf(req), getValid(req, schemas.archiveToggle).archived);
+  res.status(204).end();
+});
+
+// Community wall moderation: reported, hidden or flagged posts (still anonymous)
+router.get('/community', async (_req, res) => {
+  res.json({ posts: await communityService.listForModeration() });
+});
+router.patch('/community/:id', byId, validate(schemas.hiddenToggle), async (req, res) => {
+  await communityService.setPostHidden(idOf(req), getValid(req, schemas.hiddenToggle).hidden);
   res.status(204).end();
 });
 

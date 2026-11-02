@@ -1,6 +1,6 @@
-// Referral directory starting entries. Contact details are deliberately left
-// "to be confirmed": every entry must be verified by the clinical partner
-// before the pilot (Admin > Referral directory > tick "verified").
+// Referral directory entries, verified with ALU and Solid Minds.
+// Empty fields (location, phone, email, website, hours) are simply not shown.
+// Opening hours are listed only for services outside ALU.
 export interface ProviderContent {
   name: string;
   serviceType: 'counselling' | 'medical' | 'academic' | 'financial' | 'emergency' | 'wellbeing' | 'other';
@@ -8,34 +8,50 @@ export interface ProviderContent {
   onCampus: boolean;
   district: string;
   location: string;
+  /** Phone number. */
   contact: string;
+  email: string;
+  website: string;
   hours: string;
 }
-
-export const WELLNESS_CENTER = 'ALU Wellness Center';
-export const LEGACY_COUNSELLING_PLACEHOLDER = 'ALU Student Wellbeing / Counselling (placeholder)';
 
 export const providers: ProviderContent[] = [
   {
     name: 'National Emergency Services',
     serviceType: 'emergency',
-    description: 'For immediate danger to life. Confirm the correct number with the clinical partner before the pilot.',
+    description: 'For immediate danger to life: police, ambulance and fire.',
     onCampus: false,
     district: 'Nationwide',
-    location: 'Nationwide',
-    contact: '112 (to be verified)',
+    location: '',
+    contact: '112',
+    email: '',
+    website: '',
     hours: '24/7',
   },
   {
-    name: WELLNESS_CENTER,
-    serviceType: 'counselling',
-    description:
-      'The first place to refer when care needs to widen. Provides professional guidance, holds safeguarding responsibility, receives referrals, and supports peer supporters.',
+    name: 'ALU Emergency Line',
+    serviceType: 'emergency',
+    description: 'ALU’s emergency line for urgent situations involving students on or around campus.',
     onCampus: true,
     district: 'Gasabo',
-    location: 'ALU Kigali campus (room to be confirmed)',
-    contact: 'To be confirmed',
-    hours: 'To be confirmed',
+    location: 'ALU Kigali campus',
+    contact: '+250 787 414 774',
+    email: '',
+    website: '',
+    hours: '',
+  },
+  {
+    name: 'ALU Wellness & Counselling',
+    serviceType: 'counselling',
+    description:
+      'The first place to refer when care needs to widen, including health concerns. Provides professional guidance, holds safeguarding responsibility, receives referrals, and supports peer supporters.',
+    onCampus: true,
+    district: 'Gasabo',
+    location: 'ALU Kigali campus',
+    contact: '0787 414 774',
+    email: 'wellness@alueducation.com',
+    website: '',
+    hours: '',
   },
   {
     name: 'Solid Minds Counselling Clinic',
@@ -43,48 +59,57 @@ export const providers: ProviderContent[] = [
     description: 'Clinical partner of the ALU peer counselor programme, offering counselling, training and supervision.',
     onCampus: false,
     district: 'Kigali',
-    location: 'To be confirmed',
-    contact: 'To be confirmed',
-    hours: 'To be confirmed',
+    location: '',
+    contact: '+250 788 503 528',
+    email: 'info@solidminds.rw',
+    website: '',
+    hours: 'Mon–Sat, 8:00–18:00, or by appointment',
   },
   {
-    name: 'ALU Academic Advising (placeholder)',
+    name: 'ALU Student Success',
     serviceType: 'academic',
     description: 'Help with course load, academic difficulties, extensions and study planning.',
     onCampus: true,
     district: 'Gasabo',
     location: 'ALU Kigali campus',
-    contact: 'To be confirmed',
-    hours: 'Mon–Fri, times to be confirmed',
+    contact: '',
+    email: 'studentsuccess_rw@alueducation.com',
+    website: '',
+    hours: '',
   },
   {
-    name: 'ALU Financial Aid Office (placeholder)',
+    name: 'ALU Financial Aid Office',
     serviceType: 'financial',
     description: 'Questions about scholarships, fees and financial hardship support.',
     onCampus: true,
     district: 'Gasabo',
     location: 'ALU Kigali campus',
-    contact: 'To be confirmed',
-    hours: 'Mon–Fri, times to be confirmed',
+    contact: '',
+    email: 'financialaid@alueducation.com',
+    website: 'https://support.alueducation.com/finance',
+    hours: '',
   },
   {
-    name: 'Campus Health Services (placeholder)',
-    serviceType: 'medical',
-    description: 'First-line medical care and referral to clinics and hospitals.',
-    onCampus: true,
-    district: 'Gasabo',
-    location: 'ALU Kigali campus',
-    contact: 'To be confirmed',
-    hours: 'To be confirmed',
-  },
-  {
-    name: 'Student Life & Residential Support (placeholder)',
+    name: 'ALU Student Life',
     serviceType: 'wellbeing',
     description: 'Housing issues, homesickness, community and belonging.',
     onCampus: true,
     district: 'Gasabo',
     location: 'ALU Kigali campus',
-    contact: 'To be confirmed',
-    hours: 'To be confirmed',
+    contact: '',
+    email: 'studentlife_rw@alueducation.com',
+    website: 'https://support.alueducation.com/student-life',
+    hours: '',
   },
 ];
+
+/** Older entry names, mapped to the entry that replaces them, so existing rows are renamed rather than duplicated. */
+export const RENAMED_PROVIDERS: Record<string, string> = {
+  'ALU Wellness Center': 'ALU Wellness & Counselling',
+  'ALU Academic Advising (placeholder)': 'ALU Student Success',
+  'ALU Financial Aid Office (placeholder)': 'ALU Financial Aid Office',
+  'Student Life & Residential Support (placeholder)': 'ALU Student Life',
+};
+
+/** Entries that are no longer offered (the Wellness team covers health). */
+export const RETIRED_PROVIDERS = ['Campus Health Services (placeholder)', 'ALU Student Wellbeing / Counselling (placeholder)'];

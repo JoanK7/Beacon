@@ -67,7 +67,9 @@ export async function getModuleForEdit(moduleId: number) {
       'SELECT * FROM module_sections WHERE module_id = $1 ORDER BY order_index, section_id',
       [moduleId],
     ),
-    db.query<{ passing_score: number; questions: QuizQuestion[] }>('SELECT * FROM quizzes WHERE module_id = $1', [moduleId]),
+    db.query<{ passing_score: number; questions_per_attempt: number; questions: QuizQuestion[] }>('SELECT * FROM quizzes WHERE module_id = $1', [
+      moduleId,
+    ]),
   ]);
   return {
     id: m.module_id,
@@ -88,6 +90,7 @@ export async function getModuleForEdit(moduleId: number) {
     })),
     quiz: {
       passingScore: quiz.rows[0]?.passing_score ?? 70,
+      questionsPerAttempt: quiz.rows[0]?.questions_per_attempt ?? 5,
       questions: quiz.rows[0]?.questions ?? [],
     },
   };
@@ -118,11 +121,28 @@ async function saveSections(client: PoolClient, moduleId: number, sections: Modu
   }
 }
 
+/**
+ * Give every question a stable id (kept if it already has one), so past
+ * attempts still point at the right question after the quiz is edited.
+ */
+export function assignQuestionIds<Q extends { id?: string }>(questions: Q[], moduleId: number): (Q & { id: string })[] {
+  const used = new Set(questions.map((q) => q.id).filter(Boolean));
+  let next = 1;
+  return questions.map((q) => {
+    if (q.id) return { ...q, id: q.id };
+    while (used.has(`m${moduleId}-q${next}`)) next += 1;
+    const id = `m${moduleId}-q${next}`;
+    used.add(id);
+    return { ...q, id };
+  });
+}
+
 async function saveQuiz(client: PoolClient, moduleId: number, quiz: ModuleInput['quiz']) {
   await client.query(
-    `INSERT INTO quizzes (module_id, passing_score, questions) VALUES ($1, $2, $3)
-     ON CONFLICT (module_id) DO UPDATE SET passing_score = EXCLUDED.passing_score, questions = EXCLUDED.questions`,
-    [moduleId, quiz.passingScore, JSON.stringify(quiz.questions)],
+    `INSERT INTO quizzes (module_id, passing_score, questions_per_attempt, questions) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (module_id) DO UPDATE SET passing_score = EXCLUDED.passing_score,
+       questions_per_attempt = EXCLUDED.questions_per_attempt, questions = EXCLUDED.questions`,
+    [moduleId, quiz.passingScore, quiz.questionsPerAttempt, JSON.stringify(assignQuestionIds(quiz.questions, moduleId))],
   );
 }
 
@@ -207,8 +227,10 @@ export async function setScenarioStatus(scenarioId: number, status: ContentStatu
 
 // Providers ----------------------------------------------------------------
 
-const PROVIDER_COLUMNS = ['name', 'service_type', 'description', 'on_campus', 'district', 'location', 'contact', 'hours', 'verified'];
-const providerValues = (p: ProviderInput) => [p.name, p.serviceType, p.description, p.onCampus, p.district, p.location, p.contact, p.hours, p.verified];
+const PROVIDER_COLUMNS = ['name', 'service_type', 'description', 'on_campus', 'district', 'location', 'contact', 'email', 'website', 'hours', 'verified'];
+const providerValues = (p: ProviderInput) => [
+  p.name, p.serviceType, p.description, p.onCampus, p.district, p.location, p.contact, p.email, p.website, p.hours, p.verified,
+];
 
 export async function createProvider(data: ProviderInput) {
   const { rows } = await db.query<ProviderRow>(
@@ -222,7 +244,8 @@ export async function createProvider(data: ProviderInput) {
 export async function updateProvider(providerId: number, data: ProviderInput) {
   const sets = PROVIDER_COLUMNS.map((c, i) => `${c} = $${i + 1}`).join(', ');
   const { rows } = await db.query<ProviderRow>(
-    `UPDATE providers SET ${sets}, updated_at = now() WHERE provider_id = $${PROVIDER_COLUMNS.length + 1} RETURNING *`,
+    // admin_edited: the seed will never overwrite an entry an admin has corrected.
+    `UPDATE providers SET ${sets}, admin_edited = true, updated_at = now() WHERE provider_id = $${PROVIDER_COLUMNS.length + 1} RETURNING *`,
     [...providerValues(data), providerId],
   );
   if (!rows[0]) throw notFound('Provider not found.');

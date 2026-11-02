@@ -34,6 +34,9 @@ export const quizSubmission = z.object({
   answers: z.array(z.number().int().min(0)).min(1).max(50),
 });
 
+/** "new" draws different questions; "repeat" re-asks the last set (practice, no badge). */
+export const quizAttemptStart = z.object({ mode: z.enum(['new', 'repeat']).default('new') });
+
 export const providerQuery = z.object({
   q: trimmed(100).optional(),
   category: z.enum(SERVICE_TYPES).optional(),
@@ -62,6 +65,7 @@ export const feedback = z.object({
 
 export const question = z
   .object({
+    id: trimmed(60).optional(),
     prompt: trimmed(500).min(3),
     options: z.array(trimmed(300).min(1)).min(2).max(6),
     answerIndex: z.number().int().min(0),
@@ -99,10 +103,18 @@ export const moduleInput = z.object({
       }),
     )
     .min(1, 'A module needs at least one section.'),
-  quiz: z.object({
-    passingScore: z.number().int().min(1).max(100).default(70),
-    questions: z.array(question).min(1, 'A quiz needs at least one question.'),
-  }),
+  quiz: z
+    .object({
+      passingScore: z.number().int().min(1).max(100).default(70),
+      // How many questions each attempt draws from the bank. Defaults to 5, or the whole bank if it is smaller.
+      questionsPerAttempt: z.number().int().min(1).max(50).optional(),
+      questions: z.array(question).min(1, 'A quiz needs at least one question.').max(100),
+    })
+    .transform((q) => ({ ...q, questionsPerAttempt: q.questionsPerAttempt ?? Math.min(5, q.questions.length) }))
+    .refine((q) => q.questions.length >= q.questionsPerAttempt, {
+      message: 'Add at least as many questions as each quiz shows.',
+      path: ['questions'],
+    }),
 });
 
 export const providerInput = z.object({
@@ -113,6 +125,10 @@ export const providerInput = z.object({
   district: trimmed(80).default('Gasabo'),
   location: trimmed(200).default(''),
   contact: trimmed(200).default(''),
+  email: z.union([z.literal(''), z.email('Enter a valid email address.').max(200)]).default(''),
+  website: z
+    .union([z.literal(''), z.url({ protocol: /^https$/, error: 'Enter a full https:// web address.' }).max(500)])
+    .default(''),
   hours: trimmed(120).default(''),
   verified: z.boolean().default(false),
 });
@@ -137,3 +153,13 @@ export const skillCheckSubmission = z.object({
   // One answer per question, keyed by the question id the server sent.
   answers: z.array(z.object({ questionId: trimmed(80).min(1), answer: z.number().int().min(0) })).min(1).max(60),
 });
+
+// Community wall ---------------------------------------------------------------
+
+export const moodPost = z.object({
+  mood: z.number().int().min(1).max(5),
+  note: trimmed(280).default(''),
+});
+
+export const moodSupport = z.object({ kind: z.enum(['hug', 'here_for_you', 'you_got_this', 'reach_out']) });
+export const hiddenToggle = z.object({ hidden: z.boolean() });

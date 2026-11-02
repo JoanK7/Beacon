@@ -1,6 +1,9 @@
 // Training Module Service (FR2, FR3).
 import * as db from '../db/pool';
 import { notFound } from '../utils/http-error';
+import { ReadingPaceSignal } from '../domain/learning-integrity';
+
+const readingPace = new ReadingPaceSignal();
 
 export interface ModuleRow {
   module_id: number;
@@ -94,7 +97,8 @@ export async function getModule(slug: string, userId: number) {
       [userId, mod.module_id],
     ),
     db.query<{ passing_score: number; question_count: number }>(
-      'SELECT passing_score, jsonb_array_length(questions) AS question_count FROM quizzes WHERE module_id = $1',
+      `SELECT passing_score, LEAST(questions_per_attempt, jsonb_array_length(questions)) AS question_count
+       FROM quizzes WHERE module_id = $1 AND jsonb_array_length(questions) > 0`,
       [mod.module_id],
     ),
     db.query<{ title: string; earned_at: Date }>('SELECT title, earned_at FROM badges WHERE user_id = $1 AND module_id = $2', [
@@ -109,6 +113,7 @@ export async function getModule(slug: string, userId: number) {
     ),
   ]);
 
+  await startReadingClock(userId, mod.module_id);
   const quizRow = quiz.rows[0];
   const badgeRow = badge.rows[0];
   return {
@@ -137,19 +142,56 @@ export async function getModule(slug: string, userId: number) {
 }
 
 /**
+ * Note when the learner opened the module, so the time spent on the first
+ * section can be measured. Re-opening within 30 minutes (a page refresh, say)
+ * keeps the original time, so refreshing never makes careful reading look rushed.
+ */
+async function startReadingClock(userId: number, moduleId: number) {
+  await db.query(
+    `INSERT INTO module_activity (user_id, module_id) VALUES ($1, $2)
+     ON CONFLICT (user_id, module_id) DO UPDATE SET last_seen_at = now()
+     WHERE module_activity.last_seen_at < now() - interval '30 minutes'`,
+    [userId, moduleId],
+  );
+}
+
+/**
  * Record that a section was viewed. When every section of the module has been
  * viewed the module is marked complete (FR3).
+ *
+ * The time since the learner opened the module or finished the previous
+ * section is measured on the server and compared with the section's length.
+ * A section read far too fast still counts towards completion (nothing is
+ * ever blocked) but is marked as rushed, earns no points, and the response
+ * says so, so the page can nudge the learner kindly.
  */
 export async function markSectionViewed(slug: string, sectionId: number, userId: number) {
   const mod = await findPublishedModule(slug);
   return db.withTransaction(async (client) => {
-    const section = await client.query('SELECT 1 FROM module_sections WHERE section_id = $1 AND module_id = $2', [
+    const section = await client.query<{ body: string }>('SELECT body FROM module_sections WHERE section_id = $1 AND module_id = $2', [
       sectionId,
       mod.module_id,
     ]);
     if (!section.rowCount) throw notFound('That section is not part of this module.');
 
-    await client.query('INSERT INTO section_views (user_id, section_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [userId, sectionId]);
+    // Seconds since the clock started; capped so a tab left open overnight stays a sensible number.
+    const clock = await client.query<{ seconds: number }>(
+      `SELECT LEAST(EXTRACT(EPOCH FROM now() - last_seen_at), 3600)::int AS seconds
+       FROM module_activity WHERE user_id = $1 AND module_id = $2`,
+      [userId, mod.module_id],
+    );
+    const seconds = clock.rows[0]?.seconds ?? 0;
+    const pace = readingPace.evaluate({ body: section.rows[0]!.body }, seconds);
+
+    const inserted = await client.query(
+      'INSERT INTO section_views (user_id, section_id, dwell_seconds, rushed) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
+      [userId, sectionId, seconds, pace.rushed],
+    );
+    await client.query(
+      `INSERT INTO module_activity (user_id, module_id) VALUES ($1, $2)
+       ON CONFLICT (user_id, module_id) DO UPDATE SET last_seen_at = now()`,
+      [userId, mod.module_id],
+    );
     await client.query('INSERT INTO module_progress (user_id, module_id) VALUES ($1, $2) ON CONFLICT (user_id, module_id) DO NOTHING', [
       userId,
       mod.module_id,
@@ -172,6 +214,8 @@ export async function markSectionViewed(slug: string, sectionId: number, userId:
       );
       status = 'completed';
     }
-    return { sectionsViewed: viewed, sectionCount: total, status };
+    // Only a first read is judged; re-marking a section changes nothing.
+    const rushed = Boolean(inserted.rowCount) && pace.rushed;
+    return { sectionsViewed: viewed, sectionCount: total, status, rushed };
   });
 }

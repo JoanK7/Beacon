@@ -1,14 +1,66 @@
 // Programme Coordinator dashboard (FR10). Returns cohort-level aggregates only:
 // no usernames, notes or reflection text ever leave this service.
 import * as db from '../db/pool';
+import { normalisedGain } from '../domain/learning-integrity';
 
 // Averages over fewer than this many responses are withheld, so a coordinator
-// cannot infer an individual's mood or rating in a small pilot cohort.
+// cannot infer an individual's mood or rating in a small cohort.
 export const MIN_GROUP_SIZE = 3;
 
 const suppress = (count: number, value: number | null) => (count >= MIN_GROUP_SIZE ? value : null);
 
 type LabelCount = { label: string; count: number };
+
+/**
+ * Is learning real? Cohort-level signals of careful reading, honest first
+ * attempts and knowledge gained, each hidden when too few people contribute.
+ */
+async function getLearningQuality() {
+  const [reading, firstTries, modes, gains] = await Promise.all([
+    db.query<{ people: number; reads: number; rushed: number }>(
+      `SELECT COUNT(DISTINCT user_id)::int AS people, COUNT(*)::int AS reads, COUNT(*) FILTER (WHERE rushed)::int AS rushed
+       FROM section_views v JOIN users u USING (user_id) WHERE u.role = 'peer'`,
+    ),
+    db.query<{ people: number; average: number | null; passes: number; attempts: number }>(
+      `SELECT COUNT(DISTINCT a.user_id)::int AS people, ROUND(AVG(a.score), 1)::float AS average,
+              COUNT(*) FILTER (WHERE a.passed)::int AS passes, COUNT(*)::int AS attempts
+       FROM quiz_attempts a JOIN users u USING (user_id)
+       WHERE u.role = 'peer' AND a.mode = 'first' AND a.submitted_at IS NOT NULL`,
+    ),
+    db.query<{ mode: 'first' | 'new' | 'repeat'; attempts: number; rushed: number }>(
+      `SELECT a.mode, COUNT(*)::int AS attempts, COUNT(*) FILTER (WHERE a.rushed)::int AS rushed
+       FROM quiz_attempts a JOIN users u USING (user_id)
+       WHERE u.role = 'peer' AND a.submitted_at IS NOT NULL GROUP BY a.mode`,
+    ),
+    // Each person's latest pre and post skill-check scores, side by side.
+    db.query<{ pre: number; post: number }>(
+      `SELECT pre.score AS pre, post.score AS post
+       FROM (SELECT DISTINCT ON (user_id) user_id, score FROM skill_check_attempts WHERE kind = 'pre' ORDER BY user_id, created_at DESC) pre
+       JOIN (SELECT DISTINCT ON (user_id) user_id, score FROM skill_check_attempts WHERE kind = 'post' ORDER BY user_id, created_at DESC) post
+         USING (user_id)`,
+    ),
+  ]);
+  const r = reading.rows[0]!;
+  const f = firstTries.rows[0]!;
+  const quizAttempts = modes.rows.reduce((n, m) => n + m.attempts, 0);
+  const rushedQuizzes = modes.rows.reduce((n, m) => n + m.rushed, 0);
+  const individualGains = gains.rows.map((g) => normalisedGain(g.pre, g.post)).filter((g): g is number => g !== null);
+  const averageGain = individualGains.length ? Math.round((individualGains.reduce((a, b) => a + b, 0) / individualGains.length) * 100) / 100 : null;
+  return {
+    readingPeople: r.people,
+    rushedReadRate: suppress(r.people, r.reads ? Math.round((r.rushed / r.reads) * 100) : null),
+    firstTryPeople: f.people,
+    firstTryAverage: suppress(f.people, f.average),
+    firstTryPassRate: suppress(f.people, f.attempts ? Math.round((f.passes / f.attempts) * 100) : null),
+    attemptsByMode: Object.fromEntries(['first', 'new', 'repeat'].map((m) => [m, modes.rows.find((row) => row.mode === m)?.attempts ?? 0])) as Record<
+      'first' | 'new' | 'repeat',
+      number
+    >,
+    rushedQuizRate: quizAttempts >= MIN_GROUP_SIZE ? Math.round((rushedQuizzes / quizAttempts) * 100) : null,
+    gainPeople: individualGains.length,
+    averageGain: suppress(individualGains.length, averageGain),
+  };
+}
 
 export async function getCohortDashboard() {
   const [overview, modules, sessionsByCategory, outcomes, referralsByType, mood, sus, weekly, skill, scenarios] = await Promise.all([
@@ -31,7 +83,7 @@ export async function getCohortDashboard() {
             UNION SELECT s.user_id FROM support_sessions s WHERE s.created_at > now() - interval '14 days'
           ) a)::int AS active_last_14_days,
          (SELECT COUNT(*) FROM module_progress WHERE status = 'completed')::int AS module_completions,
-         (SELECT COUNT(*) FROM quiz_attempts)::int AS quiz_attempts,
+         (SELECT COUNT(*) FROM quiz_attempts WHERE submitted_at IS NOT NULL)::int AS quiz_attempts,
          (SELECT COUNT(*) FROM quiz_attempts WHERE passed)::int AS quiz_passes,
          (SELECT COUNT(*) FROM badges)::int AS badges_awarded,
          (SELECT COUNT(*) FROM support_sessions)::int AS sessions_logged,
@@ -80,6 +132,7 @@ export async function getCohortDashboard() {
     ),
   ]);
 
+  const learningQuality = await getLearningQuality();
   const o = overview.rows[0]!;
   const moodRow = mood.rows[0]!;
   const susRow = sus.rows[0]!;
@@ -118,6 +171,7 @@ export async function getCohortDashboard() {
       postPeople: post?.people ?? 0,
       postAverage: post ? suppress(post.people, post.average) : null,
     },
+    learningQuality,
     scenarios: scenarios.rows,
     sessionsPerWeek: weekly.rows,
   };
