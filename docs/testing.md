@@ -10,14 +10,16 @@ How Beacon is tested, how to run each kind of test, and where the results are.
 | Unit tests | Jest | Pure logic: scoring, encryption, scenario replay, input validation, content, question selection, reading pace, streak, crisis detection | 109 tests in 6 files | 109 / 109 pass |
 | Integration tests | Jest + Supertest + real PostgreSQL | Every API area through real HTTP requests and a real database | 51 tests | 51 / 51 pass |
 | Code coverage | Jest (Istanbul) | How much of the API code the tests run | | 97.0% lines, 94.5% statements, 94.2% functions, 75.5% branches |
-| End-to-end tests | Playwright | 10 complete user journeys in a real browser against the running app | 10 journeys | See section 4 |
-| Compatibility | Playwright on 3 browser engines | The same journeys on phones, a tablet and desktops | 7 profiles | 49 / 49 pass (7 journeys, 29 Oct); re-run with 10 journeys on the next push |
-| Performance (front end) | Lighthouse 12.6 | Load speed and accessibility on a simulated mid-range phone on slow 4G | 5 key pages | Performance 72–100, accessibility 100 |
-| Performance (API) | autocannon 8 | Throughput and response times under 200 simultaneous connections | 3 endpoints | 0 errors; 99% of requests under 240 ms |
+| End-to-end tests | Playwright | 10 complete user journeys in a real browser against the running app | 10 journeys | Pass on all 7 profiles below |
+| Compatibility | Playwright on 3 browser engines | The same journeys on phones, a tablet and desktops | 7 profiles × 10 journeys = 70 runs | 70 / 70 pass (2 Nov) |
+| Performance (front end) | Lighthouse 12.6 | Load speed and accessibility on a simulated mid-range phone on slow 4G | 5 key pages | Performance 87–98 (latest run), accessibility 100 |
+| Performance (API) | autocannon 8 | Throughput and response times under 200 simultaneous connections | 3 endpoints | 0 errors; 99% of requests under 240 ms (130 ms in the latest run) |
 | Upgrade test | Integration test + manual run | Content updates on a live database keep learners' progress | 2 tests + 1 manual run | Pass |
 | Usability | System Usability Scale form in the app, plus peer counsellor and supervisor feedback | How easy and engaging peers find Beacon | Ongoing | Feedback led to the lesson blocks, question banks, streak, stories and community wall |
 
 Every push to `main` runs the CI and compatibility workflows on GitHub, so these results are re-checked automatically.
+
+**Latest runs (final release, 2 November 2026):** [CI](https://github.com/JoanK7/Beacon/actions/runs/41492092844) and [Compatibility & performance](https://github.com/JoanK7/Beacon/actions/runs/41492092925), all jobs green.
 
 ## Where the results are
 
@@ -120,6 +122,8 @@ The same 7 journeys run on each profile (screen size, touch, user agent and brow
 | `firefox` | Gecko (Firefox) | 1280 × 720 | Laptop, Firefox | 7 / 7 pass |
 | `webkit-safari` | WebKit (Safari) | 1280 × 720 | Mac, Safari | 7 / 7 pass |
 
+With the three new journeys (repeat vs new quiz, daily story and streak, community wall), every profile passed all **10 / 10** journeys on 2 November.
+
 **Findings from compatibility testing**
 
 - On the first run, `small-android` and `webkit-safari` failed. The cause was test data: their longer device names made test usernames 31 characters, and the app **correctly rejected** them (the limit is 30). The tests now generate shorter usernames.
@@ -141,6 +145,24 @@ Two runs on 29 October 2026 (shared CI machines vary from run to run, so both ar
 | `/dashboard` | 94 / 94 | 100 | 2.9 s / 3.1 s |
 | `/learn/peers-model` (a lesson) | 94 / 96 | 100 | 2.9 s / 2.7 s |
 | `/directory` | 96 / 97 | 100 | 2.6 s / 2.6 s |
+
+**Final release run (2 November 2026), after adding stories, the streak and the community wall:**
+
+| Page | Performance | Accessibility | Largest contentful paint |
+|---|---|---|---|
+| `/` (landing) | 89 | 100 | 2.5 s |
+| `/login` | 98 | 100 | 2.5 s |
+| `/dashboard` | 87 | 100 | 2.8 s |
+| `/learn/peers-model` | 96 | 100 | 2.7 s |
+| `/directory` | 97 | 100 | 2.7 s |
+
+| Endpoint | Requests per second | Median | 99th percentile | Errors |
+|---|---|---|---|---|
+| `/api/health` | 6,544 | 28 ms | 59 ms | 0 |
+| `/api/modules` | 1,840 | 107 ms | 130 ms | 0 |
+| `/api/providers?q=counselling` | 2,918 | 67 ms | 81 ms | 0 |
+
+The dashboard's performance score dropped from 94 to 87 because it now also loads today's story (one more request), but its main content still appears in 2.8 s, inside the 3-second target. Combining the dashboard's requests into one is the next optimisation. The landing page improved (72–77 → 89); runs on shared CI machines vary, so trends matter more than single numbers.
 
 All five pages score 100 for accessibility (NFR3). The main content of every page appears in about 3 seconds or less on slow 4G with a slower phone CPU (NFR2's 3-second target); the dashboard sits right at the limit (2.9–3.1 s). The public landing page scores lowest (77); it is seen once, before sign-in, and is the first candidate for optimisation (the Lighthouse report in the artifacts lists the specific opportunities).
 
