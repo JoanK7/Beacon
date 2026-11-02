@@ -52,7 +52,6 @@ export default function PracticePage() {
   const { data, error, loading, reload } = useApi<{ scenarios: ScenarioSummary[] }>('/scenarios');
   const scenarios = data?.scenarios ?? [];
   const played = scenarios.filter((s) => s.completed).length;
-  const unverified = scenarios.some((s) => !s.contentVerified);
 
   return (
     <>
@@ -69,11 +68,7 @@ export default function PracticePage() {
         </SpeechBubble>
       </Card>
 
-      {unverified && (
-        <Alert tone="warning" className="mb-5">
-          These scenarios are adapted from the Solid Minds peer counsellor training and are awaiting their review.
-        </Alert>
-      )}
+      <p className="mb-5 text-xs text-muted">Scenarios are adapted from the Solid Minds peer counsellor training.</p>
 
       {loading && <Loading />}
       {error && <ErrorState error={error} onRetry={reload} />}

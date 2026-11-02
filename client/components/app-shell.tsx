@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   BarChart3,
+  BookHeart,
   BookOpen,
   ClipboardList,
   Heart,
@@ -19,6 +20,7 @@ import {
   Settings,
   Trophy,
   UserCircle,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -52,6 +54,8 @@ const ROLE_NAV: Partial<Record<Role, NavItem[]>> = {
 
 const MENU: NavItem[] = [
   { href: '/progress', label: 'Progress & badges', icon: Trophy },
+  { href: '/community', label: 'Community wall', icon: Users },
+  { href: '/stories', label: 'Peer support stories', icon: BookHeart },
   { href: '/feedback', label: 'Give feedback', icon: MessageSquare },
   { href: '/account', label: 'Account & privacy', icon: UserCircle },
 ];

@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { Award, BookOpen, ClipboardList, Heart, MapPin, MessagesSquare } from 'lucide-react';
+import { Award, BookHeart, BookOpen, ClipboardList, Heart, MapPin, MessagesSquare, Target } from 'lucide-react';
 import { competencyFor } from '@/lib/competencies';
 import { useApi } from '@/lib/use-api';
 import { formatDate } from '@/lib/constants';
 import type { ModuleSummary, Progress } from '@/lib/types';
 import { Card, ErrorState, Loading, PageHeader, ProgressBar, cx } from '@/components/ui';
+import { StreakChip, streakMessage } from '@/components/streak-chip';
 
 export default function ProgressPage() {
   const progress = useApi<{ progress: Progress }>('/progress');
@@ -22,6 +23,7 @@ export default function ProgressPage() {
 
   const stats = [
     { label: 'Sections read', value: p.sectionsViewed, icon: BookOpen },
+    { label: 'Stories read', value: p.storiesRead, icon: BookHeart },
     { label: 'Conversations practised', value: `${p.scenariosCompleted}/${p.scenariosTotal}`, icon: MessagesSquare },
     { label: 'Sessions logged', value: p.sessionsLogged, icon: ClipboardList },
     { label: 'Referrals made', value: p.referralsMade, icon: MapPin },
@@ -30,7 +32,7 @@ export default function ProgressPage() {
 
   return (
     <>
-      <PageHeader title="Progress & badges" description="Your own journey, at your own pace. Points come from learning: reading sections, finishing modules, passing quizzes and practising conversations." />
+      <PageHeader title="Progress & badges" description="Your own journey, at your own pace. Points come from learning: reading sections carefully, finishing modules, passing quizzes, practising conversations and reading stories." />
 
       <Card className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="flex size-20 shrink-0 items-center justify-center rounded-full bg-beacon-500 text-3xl font-extrabold text-brand-900 ring-4 ring-beacon-100" aria-label={`Level ${p.level}`}>
@@ -45,7 +47,31 @@ export default function ProgressPage() {
         </div>
       </Card>
 
-      <dl className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-6 grid gap-4 md:grid-cols-2">
+        <Card as="section" aria-labelledby="streak-heading" className="space-y-2">
+          <h2 id="streak-heading" className="text-sm font-bold uppercase tracking-wide text-coral-700">Learning streak</h2>
+          <StreakChip streak={p.streak} />
+          <p className="text-sm text-muted">
+            {streakMessage(p.streak)} Best so far: {p.streak.best} day{p.streak.best === 1 ? '' : 's'}.
+          </p>
+        </Card>
+        <Card as="section" aria-labelledby="learning-heading" className="space-y-2">
+          <h2 id="learning-heading" className="flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-brand-700">
+            <Target className="size-4" aria-hidden /> How your learning is going
+          </h2>
+          <p className="text-sm">
+            <strong className="text-2xl font-extrabold text-brand-900">{p.firstTryAverage ?? '–'}{p.firstTryAverage !== null && '%'}</strong>{' '}
+            <span className="text-muted">
+              average on your first try at each quiz{p.firstTries ? ` (${p.firstTries} quiz${p.firstTries === 1 ? '' : 'zes'})` : ''}
+            </span>
+          </p>
+          <p className="text-sm text-muted">
+            {p.carefulReads} of {p.sectionsViewed} sections read at a steady pace. Taking your time is what earns points, and helps the ideas stick.
+          </p>
+        </Card>
+      </div>
+
+      <dl className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {stats.map(({ label, value, icon: Icon }) => (
           <Card key={label} className="p-4">
             <Icon className="mb-2 size-5 text-brand-500" aria-hidden />

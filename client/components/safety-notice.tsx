@@ -28,15 +28,20 @@ export function UrgentHelpLink({ className = '' }: { className?: string }) {
 }
 
 /**
- * Banner for training content that the clinical partner has not yet signed off.
- * `sourceNote` says where the material comes from (e.g. the Solid Minds training).
+ * Note for a module an admin has added but not yet marked as reviewed by a
+ * mental health professional. Reviewed modules show only the source credit.
  */
 export function DraftContentBanner({ sourceNote }: { sourceNote?: string | null }) {
   return (
-    <div role="note" className="rounded-xl border border-beacon-400 bg-beacon-50 p-3 text-sm text-beacon-700">
-      <strong>Pending expert review.</strong>{' '}
-      {sourceNote ??
-        'This module is a placeholder for the pilot and will be replaced with material verified by a qualified mental health professional.'}
+    <div role="note" className="rounded-xl border border-line bg-slate-50 p-3 text-sm text-slate-700">
+      <strong>Not yet reviewed.</strong> This module has not yet been reviewed by a qualified mental health professional.
+      {sourceNote ? ` ${sourceNote}` : ''}
     </div>
   );
+}
+
+/** Small credit line saying where reviewed training material comes from. */
+export function SourceCredit({ sourceNote }: { sourceNote?: string | null }) {
+  if (!sourceNote) return null;
+  return <p className="text-xs text-muted">{sourceNote}</p>;
 }

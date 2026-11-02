@@ -3,9 +3,11 @@
 // Skill check: a short, low-stakes placement check across every module.
 // - First time ("pre"): shows which topics a peer already knows, so they can
 //   skip ahead or test out, and which ones to focus on.
-// - Later ("post", end of pilot): the before/after knowledge measure (RQ3).
-// Answers stay hidden while taking it. Afterwards, the peer reviews each
-// question: what they chose, the correct answer and why, so they can improve.
+// - Later ("post", after training): the before/after knowledge measure (RQ3).
+// It has its own questions, separate from the quizzes. Afterwards, the peer
+// sees which answers were right or wrong and why, but not the correct option:
+// the check can be retaken, and a revealed answer would make the next result
+// meaningless. The explanation still teaches the idea behind the question.
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, CheckCircle2, Compass, RotateCcw, Target, XCircle } from 'lucide-react';
@@ -52,7 +54,7 @@ function ResultRow({ r }: { r: SkillResult }) {
   );
 }
 
-/** Every answered question for one module: right or wrong, the correct answer and why. */
+/** Every answered question for one module: right or wrong, and why (never the correct option). */
 function ModuleReview({ r }: { r: SkillResult }) {
   if (!r.questions?.length) return null;
   const { icon: Icon, soft, iconColor } = competencyFor(r.topic);
@@ -79,13 +81,12 @@ function ModuleReview({ r }: { r: SkillResult }) {
               <span className="text-muted">Your answer: </span>
               <span className={q.correct ? 'font-semibold text-emerald-800' : 'text-ink'}>{q.options[q.chosen]}</span>
             </p>
-            {!q.correct && (
+            {q.explanation && (
               <p>
-                <span className="text-muted">Correct answer: </span>
-                <strong className="text-emerald-800">{q.options[q.correctIndex]}</strong>
+                <span className="text-muted">Why: </span>
+                {q.explanation}
               </p>
             )}
-            {q.explanation && <p className="text-muted">{q.explanation}</p>}
           </div>
         </Card>
       ))}
@@ -122,7 +123,8 @@ function Results({ summary, kind, onRetake }: { summary: SkillSummary; kind: Kin
               Review your answers
             </h2>
             <p className="text-sm text-muted">
-              {correct} of {total} correct. Each answer comes with a short explanation, so every question is a chance to learn.
+              {correct} of {total} correct. Each answer comes with the idea behind it. The correct options stay hidden, so
+              when you retake the check it still shows what you have really learned.
             </p>
           </div>
           {summary.results.map((r) => (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { Award, BookOpen, ClipboardList, Compass, Info, MapPin, MessagesSquare, Smile, Table2, Users, type LucideIcon } from 'lucide-react';
+import { Award, BookOpen, ClipboardList, Compass, Gauge, Info, MapPin, MessagesSquare, Smile, Table2, Target, TrendingUp, Users, type LucideIcon } from 'lucide-react';
 import { useApi } from '@/lib/use-api';
 import { SERVICE_TYPES, SESSION_CATEGORIES, SESSION_OUTCOMES, formatDate } from '@/lib/constants';
 import type { CohortDashboard } from '@/lib/types';
@@ -125,16 +125,17 @@ function Dashboard() {
   const weekly = d.sessionsPerWeek.map((r) => ({ label: `Week of ${formatDate(r.week)}`, value: r.count }));
   const sc = d.skillCheck;
   const skillRows: BarRow[] = [
-    ...(sc.preAverage !== null ? [{ label: `Start of pilot (${sc.prePeople} people)`, value: sc.preAverage }] : []),
-    ...(sc.postAverage !== null ? [{ label: `End of pilot (${sc.postPeople} people)`, value: sc.postAverage }] : []),
+    ...(sc.preAverage !== null ? [{ label: `First skill check (${sc.prePeople} people)`, value: sc.preAverage }] : []),
+    ...(sc.postAverage !== null ? [{ label: `Latest skill check (${sc.postPeople} people)`, value: sc.postAverage }] : []),
   ];
   const scenarioRows = d.scenarios.map((r) => ({ label: r.title, value: r.completions }));
+  const lq = d.learningQuality;
 
   return (
     <>
       <PageHeader
         title="Cohort dashboard"
-        description={`Anonymous, cohort-level view of the pilot. Updated ${formatDate(d.generatedAt, { dateStyle: 'medium', timeStyle: 'short' })}.`}
+        description={`Anonymous, cohort-level view. Updated ${formatDate(d.generatedAt, { dateStyle: 'medium', timeStyle: 'short' })}.`}
       />
       <p className="mb-6 flex items-start gap-2 rounded-xl bg-brand-50 p-3 text-xs text-brand-900">
         <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -159,6 +160,41 @@ function Dashboard() {
         />
       </div>
 
+      {/* Is learning real? Signals that peers read carefully and learn, rather than rushing or memorising. */}
+      <section aria-labelledby="quality-heading" className="mb-6">
+        <h2 id="quality-heading" className="mb-1 text-lg font-extrabold text-brand-900">Learning quality</h2>
+        <p className="mb-3 text-xs text-muted">
+          Measured on the server: reading time per section compared with its length, scores on each module&apos;s first quiz
+          attempt, and the gain between the first and latest skill check. Rates need at least {d.minGroupSize} people.
+        </p>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Stat
+            icon={Target}
+            label="Average first-try quiz score"
+            value={lq.firstTryAverage !== null ? `${lq.firstTryAverage}%` : null}
+            hint={`${lq.firstTryPeople} people · ${lq.firstTryPassRate !== null ? `${lq.firstTryPassRate}% pass first time` : 'pass rate hidden'}`}
+          />
+          <Stat
+            icon={Gauge}
+            label="Sections rushed"
+            value={lq.rushedReadRate !== null ? `${lq.rushedReadRate}%` : null}
+            hint={`Read far faster than their length allows · ${lq.readingPeople} readers`}
+          />
+          <Stat
+            icon={TrendingUp}
+            label="Average learning gain"
+            value={lq.averageGain !== null ? `${Math.round(lq.averageGain * 100)}%` : null}
+            hint={`Share of possible improvement achieved (normalised gain) · ${lq.gainPeople} people`}
+          />
+          <Stat
+            icon={Award}
+            label="Quiz attempts: first / new / repeat"
+            value={`${lq.attemptsByMode.first} / ${lq.attemptsByMode.new} / ${lq.attemptsByMode.repeat}`}
+            hint={lq.rushedQuizRate !== null ? `${lq.rushedQuizRate}% answered too fast · repeats never award badges` : 'Repeats never award badges'}
+          />
+        </div>
+      </section>
+
       {o.peers === 0 ? (
         <EmptyState icon={Users} title="No peer supporters registered yet" />
       ) : (
@@ -176,8 +212,8 @@ function Dashboard() {
             table={{
               columns: ['Check', 'People', 'Average'],
               rows: [
-                ['Start of pilot', sc.prePeople, sc.preAverage !== null ? `${sc.preAverage}%` : 'Hidden'],
-                ['End of pilot', sc.postPeople, sc.postAverage !== null ? `${sc.postAverage}%` : 'Hidden'],
+                ['First skill check', sc.prePeople, sc.preAverage !== null ? `${sc.preAverage}%` : 'Hidden'],
+                ['Latest skill check', sc.postPeople, sc.postAverage !== null ? `${sc.postAverage}%` : 'Hidden'],
               ],
             }}
           >

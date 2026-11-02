@@ -3,49 +3,73 @@
 import { Suspense, useDeferredValue, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { BadgeCheck, Clock, MapPin, Phone, Search, SearchX } from 'lucide-react';
+import { Clock, Globe, Mail, MapPin, Phone, Search, SearchX } from 'lucide-react';
 import { useApi } from '@/lib/use-api';
 import { SERVICE_TYPES, entries } from '@/lib/constants';
 import type { Provider, ServiceType } from '@/lib/types';
-import { Alert, Card, EmptyState, ErrorState, Input, Loading, PageHeader, Pill, cx } from '@/components/ui';
+import { Card, EmptyState, ErrorState, Input, Loading, PageHeader, Pill, cx } from '@/components/ui';
 
-/** Turn "112 (to be verified)" style contacts into a tappable tel: link when they start with a number. */
+/** Turn a phone number such as "+250 787 414 774" into a tappable tel: link. */
 function phoneHref(contact: string): string | null {
   const match = contact.match(/^\+?[\d\s-]{3,}/);
   return match ? `tel:${match[0].replace(/[\s-]/g, '')}` : null;
 }
 
+/** "https://support.alueducation.com/finance" → "support.alueducation.com/finance" for display. */
+const displayUrl = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
 function ProviderCard({ provider: p }: { provider: Provider }) {
   const type = SERVICE_TYPES[p.serviceType] ?? SERVICE_TYPES.other;
-  const tel = phoneHref(p.contact);
+  const tel = p.contact ? phoneHref(p.contact) : null;
+  const location = [p.location, p.district].filter(Boolean).join(', ');
   return (
     <Card as="li" className={cx('flex flex-col gap-3', p.serviceType === 'emergency' && 'border-red-200 bg-red-50/40')}>
       <div className="flex flex-wrap items-center gap-2">
         <Pill tone={type.tone}>{type.label}</Pill>
         {p.onCampus && <Pill tone="brand">On campus</Pill>}
-        {p.verified ? (
-          <Pill tone="success"><BadgeCheck className="size-3" aria-hidden /> Verified</Pill>
-        ) : (
-          <Pill tone="beacon">Pending verification</Pill>
-        )}
       </div>
       <div>
         <h2 className="text-lg font-bold text-brand-900">{p.name}</h2>
         <p className="mt-1 text-sm text-muted">{p.description}</p>
       </div>
+      {/* Each detail is shown only when the service has it (e.g. ALU services list no opening hours). */}
       <dl className="space-y-1.5 text-sm">
-        <div className="flex items-start gap-2">
-          <dt><MapPin className="mt-0.5 size-4 text-brand-500" aria-label="Location" /></dt>
-          <dd>{[p.location, p.district].filter(Boolean).join(', ')}</dd>
-        </div>
-        <div className="flex items-start gap-2">
-          <dt><Phone className="mt-0.5 size-4 text-brand-500" aria-label="Contact" /></dt>
-          <dd>{tel ? <a href={tel} className="font-semibold text-brand-700 underline">{p.contact}</a> : p.contact}</dd>
-        </div>
-        <div className="flex items-start gap-2">
-          <dt><Clock className="mt-0.5 size-4 text-brand-500" aria-label="Opening hours" /></dt>
-          <dd>{p.hours}</dd>
-        </div>
+        {location && (
+          <div className="flex items-start gap-2">
+            <dt><MapPin className="mt-0.5 size-4 text-brand-500" aria-label="Location" /></dt>
+            <dd>{location}</dd>
+          </div>
+        )}
+        {p.contact && (
+          <div className="flex items-start gap-2">
+            <dt><Phone className="mt-0.5 size-4 text-brand-500" aria-label="Phone" /></dt>
+            <dd>{tel ? <a href={tel} className="font-semibold text-brand-700 underline">{p.contact}</a> : p.contact}</dd>
+          </div>
+        )}
+        {p.email && (
+          <div className="flex items-start gap-2">
+            <dt><Mail className="mt-0.5 size-4 text-brand-500" aria-label="Email" /></dt>
+            <dd className="min-w-0 break-words">
+              <a href={`mailto:${p.email}`} className="font-semibold text-brand-700 underline">{p.email}</a>
+            </dd>
+          </div>
+        )}
+        {p.website && (
+          <div className="flex items-start gap-2">
+            <dt><Globe className="mt-0.5 size-4 text-brand-500" aria-label="Website" /></dt>
+            <dd className="min-w-0 break-words">
+              <a href={p.website} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-700 underline">
+                {displayUrl(p.website)}
+              </a>
+            </dd>
+          </div>
+        )}
+        {p.hours && (
+          <div className="flex items-start gap-2">
+            <dt><Clock className="mt-0.5 size-4 text-brand-500" aria-label="Opening hours" /></dt>
+            <dd>{p.hours}</dd>
+          </div>
+        )}
       </dl>
       <Link href={`/sessions/new?provider=${p.id}`} className="mt-auto text-sm font-semibold text-brand-700 hover:underline">
         Log a referral to this service →
@@ -56,10 +80,20 @@ function ProviderCard({ provider: p }: { provider: Provider }) {
 
 const isServiceType = (value: string): value is ServiceType => value in SERVICE_TYPES;
 
-const FILTERS: { value: ServiceType | ''; label: string }[] = [
-  { value: '', label: 'All' },
-  ...entries(SERVICE_TYPES).map(([value, { label }]) => ({ value, label })),
-];
+/**
+ * Filter chips: "All" plus only the service types that have at least one
+ * service, so peers never tap a category that shows nothing. A type returns
+ * automatically when an admin adds a service of that kind.
+ */
+function filtersFor(providers: Provider[] | undefined): { value: ServiceType | ''; label: string }[] {
+  const present = new Set(providers?.map((p) => p.serviceType));
+  return [
+    { value: '', label: 'All' },
+    ...entries(SERVICE_TYPES)
+      .filter(([value]) => present.has(value))
+      .map(([value, { label }]) => ({ value, label })),
+  ];
+}
 
 function Directory({ initial }: { initial: string }) {
   const [category, setCategory] = useState<ServiceType | ''>(isServiceType(initial) ? initial : '');
@@ -70,6 +104,9 @@ function Directory({ initial }: { initial: string }) {
   if (deferredQuery) params.set('q', deferredQuery);
   if (category) params.set('category', category);
   const { data, error, loading, reload } = useApi<{ providers: Provider[] }>(`/providers?${params}`);
+  // The full, unfiltered list decides which category chips to show.
+  const all = useApi<{ providers: Provider[] }>('/providers');
+  const filters = filtersFor(all.data?.providers);
 
   return (
     <>
@@ -77,9 +114,6 @@ function Directory({ initial }: { initial: string }) {
         title="Referral directory"
         description="Campus and local services you can connect a peer with. Emergency services are always listed first."
       />
-      <Alert tone="warning" className="mb-5">
-        Services marked “Pending verification” have not yet been confirmed by the clinical partner. Always double-check contact details before passing them on.
-      </Alert>
 
       <div className="mb-5 space-y-3">
         <div className="relative">
@@ -95,7 +129,7 @@ function Directory({ initial }: { initial: string }) {
           />
         </div>
         <div role="group" aria-label="Filter by service type" className="flex gap-2 overflow-x-auto pb-1">
-          {FILTERS.map(({ value, label }) => (
+          {filters.map(({ value, label }) => (
             <button
               key={value || 'all'}
               onClick={() => setCategory(value)}

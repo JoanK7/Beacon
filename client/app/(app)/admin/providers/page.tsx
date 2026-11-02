@@ -21,6 +21,8 @@ const EMPTY: ProviderDraft = {
   district: 'Gasabo',
   location: '',
   contact: '',
+  email: '',
+  website: '',
   hours: '',
   verified: false,
 };
@@ -80,16 +82,24 @@ function ProviderForm({ initial, onCancel, onSaved }: ProviderFormProps) {
       </div>
       <Field label="Location" id="p-loc"><Input id="p-loc" value={p.location} onChange={set('location')} /></Field>
       <Field label="District" id="p-district"><Input id="p-district" value={p.district} onChange={set('district')} /></Field>
-      <Field label="Contact" id="p-contact" hint="Phone numbers at the start become tap-to-call links.">
-        <Input id="p-contact" value={p.contact} onChange={set('contact')} />
+      <Field label="Phone" id="p-contact" hint="Becomes a tap-to-call link.">
+        <Input id="p-contact" type="tel" value={p.contact} onChange={set('contact')} />
       </Field>
-      <Field label="Opening hours" id="p-hours"><Input id="p-hours" value={p.hours} onChange={set('hours')} /></Field>
+      <Field label="Email" id="p-email" error={errors.email}>
+        <Input id="p-email" type="email" value={p.email} onChange={set('email')} error={errors.email} />
+      </Field>
+      <Field label="Website" id="p-website" error={errors.website} hint="A full https:// address.">
+        <Input id="p-website" type="url" placeholder="https://" value={p.website} onChange={set('website')} error={errors.website} />
+      </Field>
+      <Field label="Opening hours" id="p-hours" hint="Leave empty to hide the opening hours.">
+        <Input id="p-hours" value={p.hours} onChange={set('hours')} />
+      </Field>
       <div className="flex flex-wrap gap-4 sm:col-span-2">
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={p.onCampus} onChange={set('onCampus')} className="size-5 accent-brand-700" /> On campus
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={p.verified} onChange={set('verified')} className="size-5 accent-brand-700" /> Details verified by clinical partner
+          <input type="checkbox" checked={p.verified} onChange={set('verified')} className="size-5 accent-brand-700" /> Details verified
         </label>
       </div>
       <div className="flex justify-end gap-3 sm:col-span-2">
@@ -146,7 +156,7 @@ export default function AdminProvidersPage() {
                   {p.archived && <Pill tone="danger">Archived</Pill>}
                 </div>
                 <p className="mt-1 font-semibold text-brand-900">{p.name}</p>
-                <p className="text-sm text-muted">{p.contact} · {p.hours}</p>
+                <p className="text-sm text-muted">{[p.contact, p.email, p.hours].filter(Boolean).join(' · ')}</p>
               </div>
               <div className="flex gap-2">
                 <Button variant="secondary" onClick={() => { setEditing(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>

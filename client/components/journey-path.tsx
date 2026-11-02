@@ -56,7 +56,8 @@ function Stone({ module, current, size = 'lg' }: { module: ModuleSummary; curren
           className={cx(
             'absolute -right-1 -top-1 flex items-center justify-center rounded-full ring-2 ring-white',
             big ? 'size-7' : 'size-5',
-            status.key === 'badge' ? 'bg-beacon-500 text-brand-900' : 'bg-brand-600 text-white',
+            // Green = badge earned (done), yellow = read and quiz ready (a next step waiting).
+            status.key === 'badge' ? 'bg-emerald-600 text-white' : 'bg-beacon-400 text-brand-900',
           )}
         >
           <Check className={big ? 'size-4' : 'size-3'} strokeWidth={3} aria-hidden />

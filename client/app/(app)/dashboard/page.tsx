@@ -1,22 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, ClipboardPlus, Compass, Heart, MapPin, MessagesSquare, Sparkles } from 'lucide-react';
+import { ArrowRight, BookHeart, CheckCircle2, ClipboardPlus, Compass, Heart, MapPin, MessagesSquare, Sparkles, Users } from 'lucide-react';
 import { useUser } from '@/lib/auth-context';
 import { useApi } from '@/lib/use-api';
 import { competencyFor } from '@/lib/competencies';
 import { useSkillFocus } from '@/lib/skill-focus';
-import type { ModuleSummary, Progress, ScenarioSummary } from '@/lib/types';
+import type { ModuleSummary, Progress, ScenarioSummary, StoryList } from '@/lib/types';
 import { PersonaAvatar } from '@/components/persona-avatar';
 import { Card, ErrorState, LinkButton, Loading, ProgressBar } from '@/components/ui';
 import { NotTherapyNotice } from '@/components/safety-notice';
 import { Bea, SpeechBubble } from '@/components/mascot';
 import { JourneyStrip, suggestedModule } from '@/components/journey-path';
+import { StreakChip } from '@/components/streak-chip';
 
 const QUICK_ACTIONS = [
   { href: '/sessions/new', label: 'Log a session', hint: 'Takes under a minute', icon: ClipboardPlus, tone: 'bg-brand-50 text-brand-700' },
   { href: '/directory', label: 'Find a service', hint: 'Campus & local help', icon: MapPin, tone: 'bg-sky-soft text-sky-700' },
   { href: '/reflect', label: 'Self-care check-in', hint: 'How are you feeling?', icon: Heart, tone: 'bg-lavender-50 text-lavender-700' },
+  { href: '/community', label: 'Community wall', hint: 'Support each other, anonymously', icon: Users, tone: 'bg-coral-50 text-coral-700' },
 ];
 
 /** A kind, situational greeting from Bea. Never mentions what you *haven't* done. */
@@ -31,6 +33,7 @@ export default function DashboardPage() {
   const progress = useApi<{ progress: Progress }>('/progress');
   const modules = useApi<{ modules: ModuleSummary[] }>('/modules');
   const scenarios = useApi<{ scenarios: ScenarioSummary[] }>('/scenarios');
+  const stories = useApi<StoryList>('/stories');
   const skill = useSkillFocus();
 
   if (progress.loading || modules.loading) return <Loading />;
@@ -54,6 +57,7 @@ export default function DashboardPage() {
         <div className="min-w-0 flex-1 space-y-2 pb-2">
           <h1 className="break-words text-2xl font-extrabold text-brand-900 sm:text-3xl">Hello, {user.username}!</h1>
           <SpeechBubble className="max-w-xl">{greeting(p)}</SpeechBubble>
+          <StreakChip streak={p.streak} />
         </div>
       </section>
 
@@ -138,6 +142,33 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      {stories.data?.today && (
+        <Card as="section" aria-labelledby="story-heading" className="flex flex-col gap-4 border-coral-400/40 bg-gradient-to-r from-white to-coral-50 sm:flex-row sm:items-center">
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-coral-50 text-coral-700">
+            <BookHeart className="size-7" aria-hidden />
+          </span>
+          <div className="flex-1">
+            <p className="text-xs font-bold uppercase tracking-wide text-coral-700">Today&apos;s story</p>
+            <h2 id="story-heading" className="mt-1 text-lg font-extrabold text-brand-900">{stories.data.today.title}</h2>
+            <p className="text-sm text-muted">
+              {stories.data.today.read ? (
+                <span className="inline-flex items-center gap-1"><CheckCircle2 className="size-4 text-emerald-600" aria-hidden /> Read. Thank you!</span>
+              ) : (
+                `A two-minute story of peer support in action. +${stories.data.pointsPerStory} points.`
+              )}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <LinkButton href={`/stories/${stories.data.today.slug}`} variant="secondary">
+              {stories.data.today.read ? 'Read again' : 'Read the story'} <ArrowRight className="size-4" aria-hidden />
+            </LinkButton>
+            <Link href="/stories" className="text-center text-sm font-bold text-brand-700 hover:underline">
+              All stories
+            </Link>
+          </div>
+        </Card>
+      )}
+
       {featured && (
         <Card as="section" aria-labelledby="practice-heading" className="flex flex-col gap-4 border-brand-200 bg-gradient-to-r from-white to-brand-50 sm:flex-row sm:items-center">
           <PersonaAvatar persona={featured.persona} size="lg" />
@@ -161,7 +192,7 @@ export default function DashboardPage() {
 
       <section aria-labelledby="quick-heading">
         <h2 id="quick-heading" className="mb-3 text-lg font-extrabold text-brand-900">Quick actions</h2>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {QUICK_ACTIONS.map(({ href, label, hint, icon: Icon, tone }) => (
             <Link
               key={href}

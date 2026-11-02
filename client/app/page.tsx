@@ -46,7 +46,7 @@ export default function LandingPage() {
               <SpeechBubble className="mb-3">Hi, I&apos;m Bea! Let&apos;s learn together. 👋</SpeechBubble>
             </div>
             <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-beacon-100 px-3 py-1 text-xs font-bold text-beacon-700">
-              Pilot · ALU Kigali
+              For ALU peer supporters · Kigali
             </p>
             <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-brand-900 sm:text-5xl">
               Be the light for a peer, <span className="text-brand-600">prepared and supported.</span>

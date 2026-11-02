@@ -170,9 +170,7 @@ function Intro({ scenario, onStart }: { scenario: ScenarioDetail; onStart: () =>
       <Button onClick={onStart} className="w-full sm:w-auto">
         {scenario.sensitive ? "I'm ready to begin" : 'Start the conversation'} <ArrowRight className="size-4" aria-hidden />
       </Button>
-      {!scenario.contentVerified && (
-        <p className="text-xs text-muted">Adapted from the Solid Minds peer counsellor training. Pending their review.</p>
-      )}
+      <p className="text-xs text-muted">Adapted from the Solid Minds peer counsellor training.</p>
     </Card>
   );
 }

@@ -8,7 +8,7 @@ import { api, errorMessage } from '@/lib/api';
 import { useApi } from '@/lib/use-api';
 import { Alert, Button, Card, ErrorState, LinkButton, Loading, Pill, ProgressBar, cx } from '@/components/ui';
 import { FormattedText } from '@/components/formatted-text';
-import { DraftContentBanner, NotTherapyNotice } from '@/components/safety-notice';
+import { DraftContentBanner, NotTherapyNotice, SourceCredit } from '@/components/safety-notice';
 import { Celebration } from '@/components/celebration';
 import { Bea } from '@/components/mascot';
 import { competencyFor } from '@/lib/competencies';
@@ -26,6 +26,7 @@ export default function ModulePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const [justRead, setJustRead] = useState<number | null>(null); // sections read count, shown briefly after continuing
+  const [rushed, setRushed] = useState(false); // the last section was marked read faster than it could be read
 
   if (loading) return <Loading />;
   if (error || !data) return <ErrorState error={error} onRetry={reload} />;
@@ -50,6 +51,7 @@ export default function ModulePage() {
         const result = await api<SectionViewResult>(`/modules/${slug}/sections/${section.id}/view`, { method: 'POST' });
         setViewed((prev) => new Set(prev).add(section.id));
         setJustRead(viewedCount + 1);
+        setRushed(result.rushed);
         if (result.status === 'completed' && !completed && mod.status !== 'completed') {
           setCompleted(true);
           setCelebrate(true); // first time finishing this module
@@ -91,11 +93,11 @@ export default function ModulePage() {
         <p className="mt-1 text-muted">{mod.summary}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
           <span className="flex items-center gap-1"><Clock className="size-3" aria-hidden /> {mod.estimatedMinutes} min</span>
-          {mod.badge && <Pill tone="beacon"><Award className="size-3" aria-hidden /> {mod.badge.title}</Pill>}
+          {mod.badge && <Pill tone="success"><Award className="size-3" aria-hidden /> {mod.badge.title}</Pill>}
         </div>
       </header>
 
-      {!mod.contentVerified && <DraftContentBanner sourceNote={mod.sourceNote} />}
+      {mod.contentVerified ? <SourceCredit sourceNote={mod.sourceNote} /> : <DraftContentBanner sourceNote={mod.sourceNote} />}
 
       <div className="grid gap-5 lg:grid-cols-[16rem_1fr]">
         <aside aria-label="Module sections">
@@ -111,6 +113,7 @@ export default function ModulePage() {
                     onClick={() => {
                       setIndex(i);
                       setJustRead(null);
+                      setRushed(false);
                     }}
                     aria-current={i === current ? 'step' : undefined}
                     className={cx(
@@ -136,10 +139,20 @@ export default function ModulePage() {
 
         <div className="space-y-4">
           <Card as="article" aria-labelledby="section-heading" className="sm:p-8">
-            {justRead !== null && (
+            {justRead !== null && !rushed && (
               <p key={justRead} role="status" className="mb-4 inline-flex animate-pop items-center gap-2 rounded-full bg-beacon-50 px-3 py-1.5 text-xs font-bold text-beacon-700 ring-1 ring-inset ring-beacon-400/60">
                 <BookOpenCheck className="size-4" aria-hidden /> Nice! {justRead} of {sections.length} sections read
               </p>
+            )}
+            {justRead !== null && rushed && (
+              // Gentle, never blocking: the section still counts, it just earns no points.
+              <div key={`rushed-${justRead}`} role="status" className="mb-4 flex animate-pop items-start gap-3 rounded-2xl bg-sky-soft p-3 text-sm text-brand-900">
+                <Bea mood="think" size={40} />
+                <p>
+                  <strong>That was quick!</strong> Key ideas stick better with a slower read. Sections earn points when you take a
+                  moment with them. Feel free to go back.
+                </p>
+              </div>
             )}
             <div className="flex items-center gap-3">
               <span className={cx('flex size-10 shrink-0 items-center justify-center rounded-2xl', tone.soft)}>
@@ -183,6 +196,7 @@ export default function ModulePage() {
               <Button variant="ghost" onClick={() => {
                   setIndex(current - 1);
                   setJustRead(null);
+                  setRushed(false);
                 }} disabled={current === 0}>
                 <ArrowLeft className="size-4" aria-hidden /> Previous
               </Button>
@@ -236,7 +250,7 @@ export default function ModulePage() {
               <div className="flex-1">
                 <p className="font-extrabold text-brand-900">{mod.badge ? 'Badge earned! Fancy a quick refresher?' : 'Ready for a quick, friendly check?'}</p>
                 <p className="text-sm text-muted">
-                  {mod.quiz.questionCount} short questions. Try as many times as you like; there&apos;s no penalty.
+                  {mod.quiz.questionCount} short questions, different each time you take a new quiz. Try as often as you like; there&apos;s no penalty.
                 </p>
               </div>
               <LinkButton href={`/learn/${slug}/quiz`} variant="accent">

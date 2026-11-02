@@ -8,6 +8,7 @@ const TABS = [
   { href: '/admin', label: 'Training modules', match: (p: string) => p === '/admin' || p.startsWith('/admin/modules') },
   { href: '/admin/scenarios', label: 'Scenarios', match: (p: string) => p.startsWith('/admin/scenarios') },
   { href: '/admin/providers', label: 'Referral directory', match: (p: string) => p.startsWith('/admin/providers') },
+  { href: '/admin/community', label: 'Community wall', match: (p: string) => p.startsWith('/admin/community') },
 ];
 
 export function AdminTabs() {

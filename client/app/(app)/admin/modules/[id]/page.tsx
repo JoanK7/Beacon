@@ -21,7 +21,7 @@ const EMPTY_MODULE: EditableModule = {
   status: 'draft',
   contentVerified: false,
   sections: [{ heading: '', body: '', mediaType: null, mediaUrl: null }],
-  quiz: { passingScore: 70, questions: [{ prompt: '', options: ['', ''], answerIndex: 0, explanation: '' }] },
+  quiz: { passingScore: 70, questionsPerAttempt: 1, questions: [{ prompt: '', options: ['', ''], answerIndex: 0, explanation: '' }] },
 };
 
 const slugify = (s: string) =>
@@ -84,7 +84,7 @@ function ModuleEditor({ initial, isNew }: { initial: EditableModule; isNew: bool
       orderIndex: Number(m.orderIndex),
       estimatedMinutes: Number(m.estimatedMinutes),
       sections: m.sections.map((s) => ({ ...s, mediaType: s.mediaUrl ? s.mediaType || 'image' : null })),
-      quiz: { ...m.quiz, passingScore: Number(m.quiz.passingScore) },
+      quiz: { ...m.quiz, passingScore: Number(m.quiz.passingScore), questionsPerAttempt: Number(m.quiz.questionsPerAttempt) },
     };
     try {
       const res = isNew
@@ -228,12 +228,30 @@ function ModuleEditor({ initial, isNew }: { initial: EditableModule; isNew: bool
 
       <Card className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-brand-900">Quiz</h2>
-          <div className="flex items-center gap-2">
-            <label htmlFor="passingScore" className="text-sm font-semibold">Pass mark %</label>
-            <Input id="passingScore" type="number" min={1} max={100} className="w-24" value={m.quiz.passingScore} onChange={(e) => set({ quiz: { ...m.quiz, passingScore: e.target.value } })} />
+          <h2 className="text-lg font-semibold text-brand-900">Quiz question bank</h2>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="questionsPerAttempt" className="text-sm font-semibold">Questions per quiz</label>
+              <Input
+                id="questionsPerAttempt"
+                type="number"
+                min={1}
+                max={m.quiz.questions.length}
+                className="w-20"
+                value={m.quiz.questionsPerAttempt}
+                onChange={(e) => set({ quiz: { ...m.quiz, questionsPerAttempt: e.target.value } })}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="passingScore" className="text-sm font-semibold">Pass mark %</label>
+              <Input id="passingScore" type="number" min={1} max={100} className="w-24" value={m.quiz.passingScore} onChange={(e) => set({ quiz: { ...m.quiz, passingScore: e.target.value } })} />
+            </div>
           </div>
         </div>
+        <p className="text-sm text-muted">
+          Each quiz draws {m.quiz.questionsPerAttempt} of these {m.quiz.questions.length} questions. A bank at least twice that size lets a
+          &quot;new quiz&quot; ask completely different questions, so learners can&apos;t pass by memorising one set.
+        </p>
         {m.quiz.questions.map((q, i) => (
           <fieldset key={i} className="space-y-3 rounded-xl border border-line p-4">
             <div className="flex items-center justify-between">

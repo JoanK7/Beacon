@@ -67,7 +67,7 @@ export default function RegisterPage() {
               <Link href="/privacy" target="_blank" className="font-semibold text-brand-700 underline">
                 privacy notice
               </Link>{' '}
-              and agree to take part in the Beacon pilot. I understand I can withdraw and delete my data at any time.
+              and agree to how Beacon uses my data. I understand I can stop using Beacon and delete my data at any time.
             </span>
           </label>
           {errors.consent && <p className="mt-1 text-xs font-medium text-red-700">{errors.consent}</p>}

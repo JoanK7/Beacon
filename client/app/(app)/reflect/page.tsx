@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Heart, Lock, Trash2 } from 'lucide-react';
+import { Heart, Lock, Trash2, Users } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { useApi } from '@/lib/use-api';
 import { MOODS, formatDate } from '@/lib/constants';
@@ -10,7 +10,7 @@ import type { Reflection } from '@/lib/types';
 import { Bea } from '@/components/mascot';
 import { Alert, Button, Card, EmptyState, ErrorState, Field, Loading, PageHeader, Textarea, cx } from '@/components/ui';
 
-type Feedback = { tone: 'success' | 'warning'; low: boolean } | { tone: 'error'; text: string };
+type Feedback = { tone: 'success' | 'warning'; low: boolean; mood: number } | { tone: 'error'; text: string };
 
 const PROMPTS = [
   'What went well in your recent conversations?',
@@ -32,7 +32,7 @@ export default function ReflectPage() {
     setMessage(null);
     try {
       await api('/reflections', { method: 'POST', body: { moodRating: mood, freeText: text } });
-      setMessage({ tone: mood <= 2 ? 'warning' : 'success', low: mood <= 2 });
+      setMessage({ tone: mood <= 2 ? 'warning' : 'success', low: mood <= 2, mood });
       setMood(null);
       setText('');
       reload();
@@ -85,6 +85,17 @@ export default function ReflectPage() {
               You don&apos;t have to carry it alone. Consider talking to your supervisor or a counsellor. You can find
               them in the <Link href="/directory?category=counselling" className="font-semibold underline">directory</Link>.
             </Alert>
+          )}
+
+          {message && 'mood' in message && (
+            // Optional: let other peers know, without a name, so someone can offer a kind word.
+            <Link
+              href={`/community?mood=${message.mood}`}
+              className="flex items-center gap-3 rounded-2xl bg-coral-50 p-3 text-sm font-semibold text-coral-700 hover:underline"
+            >
+              <Users className="size-5 shrink-0" aria-hidden />
+              Want support from other peers? Share how you feel on the Community wall, anonymously. (Your note above stays private.)
+            </Link>
           )}
 
           <div className="flex items-center justify-between gap-3">

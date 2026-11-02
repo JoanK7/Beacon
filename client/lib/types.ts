@@ -62,16 +62,33 @@ export interface SectionViewResult {
   sectionsViewed: number;
   sectionCount: number;
   status: ModuleStatus;
+  /** Marked read much faster than the section could be read: counts for progress, earns no points. */
+  rushed: boolean;
 }
 
 // Quizzes ------------------------------------------------------------------
 
+/** Quiz overview: the learner's record and how the quiz works (no questions). */
 export interface Quiz {
   module: { slug: string; title: string };
   passingScore: number;
+  /** Questions shown per attempt, drawn from a bank of `bankSize`. */
+  questionCount: number;
+  bankSize: number;
   bestScore: number | null;
   attempts: number;
+  canRepeat: boolean;
   testOut: boolean;
+}
+
+export type QuizMode = 'first' | 'new' | 'repeat';
+
+export interface QuizAttempt {
+  attemptId: number;
+  mode: QuizMode;
+  passingScore: number;
+  /** Repeated quizzes are practice: they never award the badge. */
+  canEarnBadge: boolean;
   questions: { index: number; prompt: string; options: string[] }[];
 }
 
@@ -81,7 +98,12 @@ export interface QuizResult {
   correctCount: number;
   total: number;
   passingScore: number;
+  mode: QuizMode;
+  canEarnBadge: boolean;
+  /** Answered faster than the questions could be read. */
+  rushed: boolean;
   testedOut: boolean;
+  questions: { prompt: string; options: string[] }[];
   results: { question: number; chosen: number | null; correctIndex: number; correct: boolean; explanation: string }[];
   badge: { title: string; earnedAt: string; isNew: true } | null;
 }
@@ -132,11 +154,11 @@ export interface ScenarioResult {
 
 // Skill check --------------------------------------------------------------
 
+/** One answered skill-check question. The correct option is never sent, only whether the answer was right and why. */
 export interface SkillReviewItem {
   prompt: string;
   options: string[];
   chosen: number;
-  correctIndex: number;
   correct: boolean;
   explanation: string;
 }
@@ -179,7 +201,68 @@ export interface Progress {
   reflectionsWritten: number;
   scenariosCompleted: number;
   scenariosTotal: number;
+  /** Sections read at a realistic pace (only these earn points). */
+  carefulReads: number;
+  storiesRead: number;
+  /** Average score on each module's first quiz attempt. */
+  firstTryAverage: number | null;
+  firstTries: number;
+  streak: Streak;
   badges: { id: number; title: string; type: string; earnedAt: string; moduleSlug: string; topic: string }[];
+}
+
+export interface Streak {
+  current: number;
+  best: number;
+  activeToday: boolean;
+  restDaysPerWeek: number;
+}
+
+// Daily stories -------------------------------------------------------------
+
+export interface Story {
+  id: number;
+  slug: string;
+  title: string;
+  body: string;
+  reflection: string;
+  module: { slug: string; title: string } | null;
+  read: boolean;
+  readAt: string | null;
+}
+
+export interface StoryList {
+  today: Story | null;
+  stories: Story[];
+  pointsPerStory: number;
+}
+
+// Community wall --------------------------------------------------------------
+
+export type SupportKind = 'hug' | 'here_for_you' | 'you_got_this' | 'reach_out';
+
+export interface MoodPost {
+  id: number;
+  mood: number;
+  note: string;
+  needsCare: boolean;
+  /** Rounded to the hour, for anonymity. */
+  postedAt: string;
+  mine: boolean;
+  supports: Record<SupportKind, number>;
+  mySupports: SupportKind[];
+  reportedByMe: boolean;
+}
+
+export interface ModerationPost {
+  id: number;
+  mood: number;
+  note: string;
+  needsCare: boolean;
+  hidden: boolean;
+  adminCleared: boolean;
+  reports: number;
+  createdAt: string;
 }
 
 // Directory, sessions, reflections -------------------------------------------
@@ -194,7 +277,10 @@ export interface Provider {
   onCampus: boolean;
   district: string;
   location: string;
+  /** Phone number. */
   contact: string;
+  email: string;
+  website: string;
   hours: string;
   verified: boolean;
   archived: boolean;
@@ -236,6 +322,8 @@ export interface AdminModuleRow {
 }
 
 export interface EditableQuestion {
+  /** Stable id from the server; new questions get one when saved. */
+  id?: string;
   prompt: string;
   options: string[];
   answerIndex: number;
@@ -261,7 +349,7 @@ export interface EditableModule {
   status: ContentStatus;
   contentVerified: boolean;
   sections: EditableSection[];
-  quiz: { passingScore: number | string; questions: EditableQuestion[] };
+  quiz: { passingScore: number | string; questionsPerAttempt: number | string; questions: EditableQuestion[] };
 }
 
 export interface AdminScenarioRow {
@@ -303,6 +391,17 @@ export interface CohortDashboard {
   wellbeing: { reflections30Days: number; averageMood: number | null };
   usability: { responses: number; averageSus: number | null };
   skillCheck: { prePeople: number; preAverage: number | null; postPeople: number; postAverage: number | null };
+  learningQuality: {
+    readingPeople: number;
+    rushedReadRate: number | null;
+    firstTryPeople: number;
+    firstTryAverage: number | null;
+    firstTryPassRate: number | null;
+    attemptsByMode: Record<QuizMode, number>;
+    rushedQuizRate: number | null;
+    gainPeople: number;
+    averageGain: number | null;
+  };
   scenarios: { title: string; completions: number }[];
   sessionsPerWeek: { week: string; count: number }[];
 }

@@ -105,8 +105,8 @@ export default function LearnPage() {
               </SpeechBubble>
             </Card>
             <div className="flex flex-wrap gap-2 text-xs text-muted">
-              <Pill tone="beacon">✓ on yellow = badge earned</Pill>
-              <Pill tone="brand">✓ on teal = read, quiz ready</Pill>
+              <Pill tone="success">✓ on green = badge earned</Pill>
+              <Pill tone="beacon">✓ on yellow = read, quiz ready</Pill>
             </div>
           </aside>
         </div>
