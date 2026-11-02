@@ -28,6 +28,13 @@ erDiagram
     SCENARIOS ||--o{ SCENARIO_COMPLETIONS : "completed as"
     USERS ||--o{ SCENARIO_COMPLETIONS : plays
     USERS ||--o{ SKILL_CHECK_ATTEMPTS : takes
+    USERS ||--o{ MODULE_ACTIVITY : "reading clock"
+    TRAINING_MODULES ||--o{ MODULE_ACTIVITY : "timed in"
+    USERS ||--o{ STORY_READS : reads
+    STORIES ||--o{ STORY_READS : "read as"
+    USERS ||--o{ MOOD_POSTS : "shares (anonymously)"
+    MOOD_POSTS ||--o{ MOOD_SUPPORTS : receives
+    MOOD_POSTS ||--o{ MOOD_REPORTS : "reported in"
 
     USERS {
         int user_id PK
@@ -161,6 +168,43 @@ erDiagram
         jsonb results "per module: correct, total, level"
         timestamptz created_at
     }
+    MODULE_ACTIVITY {
+        int user_id PK
+        int module_id PK
+        timestamptz last_seen_at "server-side reading clock"
+    }
+    STORIES {
+        int story_id PK
+        text slug UK
+        text title
+        text body
+        text reflection
+        text module_slug
+    }
+    STORY_READS {
+        int user_id PK
+        int story_id PK
+        timestamptz read_at
+    }
+    MOOD_POSTS {
+        int post_id PK
+        int user_id FK "never returned by the API"
+        smallint mood "1-5"
+        text note "max 280"
+        boolean needs_care
+        boolean hidden
+        boolean admin_cleared
+        timestamptz created_at
+    }
+    MOOD_SUPPORTS {
+        int post_id PK
+        int user_id PK
+        text kind PK "fixed set of kind messages"
+    }
+    MOOD_REPORTS {
+        int post_id PK
+        int user_id PK
+    }
     FEEDBACK {
         int feedback_id PK
         smallint_array sus_answers "10 items, 1-5"
@@ -181,12 +225,13 @@ Scale responses are anonymous by construction (FR8).
 | `auth_sessions` | Server-side session tokens (stored hashed), expiring | FR1, NFR1 |
 | `training_modules` | Module metadata and publishing workflow | FR2, FR9 |
 | `module_sections` | Ordered content blocks (text plus optional image, video or audio) | FR2 |
-| `quizzes` | One quiz per module; questions in JSONB | FR4 |
-| `section_views` | Which sections each user has read | FR3 |
+| `quizzes` | One quiz per module: question bank and skill-check questions in JSONB, plus how many questions each attempt draws | FR4 |
+| `section_views` | Which sections each user has read, with reading time and a `rushed` flag | FR3 |
+| `module_activity` | When each learner last opened or progressed in a module (the server's reading clock) | FR3 |
 | `module_progress` | Module status; `completed` once every section is viewed | FR3 |
-| `quiz_attempts` | Every attempt with score and pass/fail | FR4, evaluation |
+| `quiz_attempts` | Every attempt: questions drawn, option order, mode (first, new, repeat), score, pass/fail, timing and `rushed` | FR4, evaluation |
 | `badges` | One mastery badge per user per module (unique constraint) | FR4 |
-| `providers` | Referral directory, with `verified` and soft-delete `archived` flags | FR5, FR9 |
+| `providers` | Referral directory: phone, email, website, hours, `verified`, `admin_edited` and soft-delete `archived` | FR5, FR9 |
 | `support_sessions` | Logged sessions; notes encrypted | FR6 |
 | `referrals` | Optional referral from a session to a provider | FR6 |
 | `reflections` | Self-care mood check-ins; free text encrypted | FR7 |
@@ -194,6 +239,8 @@ Scale responses are anonymous by construction (FR8).
 | `scenarios` | Practice conversations: persona and branching script (JSONB), linked to a module | FR4, FR9 |
 | `scenario_completions` | One row per finished play-through with its insight score (individual choices are not stored) | FR4, evaluation |
 | `skill_check_attempts` | Placement / pre-post knowledge results per module (RQ3) | FR4, evaluation |
+| `stories`, `story_reads` | Daily peer support stories and who has read which (for points) | FR4 |
+| `mood_posts`, `mood_supports`, `mood_reports` | Anonymous community wall: moods and notes, kind messages, reports | FR7 |
 | `schema_migrations` | Applied migration log (created by the runner) | — |
 
 ## Changes from the proposal ERD (and why)
@@ -209,6 +256,7 @@ Scale responses are anonymous by construction (FR8).
 | Added `consent_at` | Records informed consent at registration |
 | Added `scenarios`, `scenario_completions`, `skill_check_attempts` (migration 002) | Scenario role-plays and the skill check (supervisor feedback); the skill check also gives the pre/post knowledge measure for RQ3 |
 | Added `training_modules.source_note` | Records where content comes from (the Solid Minds training) until it is verified |
+| Added question banks, attempt records, reading time, stories and the community wall (migration 004) | Supervisor feedback: stop memorising and rushing, separate skill-check questions, a streak, daily stories and peer support between supporters. `mood_posts.user_id` exists only so authors can delete posts and account deletion removes them; the API never returns it |
 | Added `training_modules.content_version` and `admin_edited` (migration 003) | Lets a deploy refresh the authored lesson text (e.g. the interactive reformatting) in place, keeping section ids and reading progress, while never overwriting a module an admin has edited |
 
 ## Integrity & performance

@@ -119,7 +119,7 @@ Leave a blank line between blocks.
 **Why.** These follow well-established multimedia-learning principles (Mayer):
 *signalling* (highlighting key terms and takeaways), *segmenting* (short chunks,
 step lists and cards instead of walls of text) and *retrieval practice* (recalling
-an answer before seeing it). They respond to pilot feedback that the modules felt
+an answer before seeing it). They respond to user feedback that the modules felt
 plain, while keeping the low-pressure rules above: checks are never graded or
 saved, retries are unlimited, and **Mark as read** never waits for them.
 

@@ -11,8 +11,8 @@ can be compared with the screenshots in [`../screenshots`](../screenshots).
 | Peer supporters mostly use phones, often on 3G | NFR2, NFR3 | Mobile-first layout; bottom tab bar; light pages (no heavy images); PWA offline cache |
 | Must be quick to use *right after* supporting someone | FR5, FR6 | "Log a session", "Find a service" and "Self-care" one tap from Home |
 | Training should feel rewarding, not competitive | §2.7, SDT | Personal points, levels and badges; **no leaderboard, no streaks** |
-| Learning should feel calm and inviting, not like an LMS | Pilot feedback | "Calm Lagoon" palette, Bea the mascot, journey path, gentle celebrations (see [style guide](style-guide.md)) |
-| Content is unverified during the pilot | §3.6 | Persistent "Draft content, pending expert review" banner |
+| Learning should feel calm and inviting, not like an LMS | User feedback | "Calm Lagoon" palette, Bea the mascot, journey path, gentle celebrations (see [style guide](style-guide.md)) |
+| Content must be reviewed by professionals | §3.6 | Verified modules show a source credit; a module added later shows "Not yet reviewed" until an admin verifies it |
 | Not a clinical tool | §1.5, §3.6 | "Peer support is not therapy" notice; "Urgent help" always in the header |
 | Privacy by design | NFR1 | Pseudonymous sign-up, privacy warnings on note fields, coordinators see aggregates only |
 

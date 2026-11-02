@@ -23,24 +23,26 @@ Progressive Web App that gives them:
 | Visual, interactive lessons: bold key terms, callouts (Bea's tips, *Remember*, *Watch out*), step lists, tap-to-flip cards, *Check yourself* questions and *Think, then reveal* prompts. Practice only: nothing is graded or blocks moving on | FR2 |
 | Section-by-section progress tracking; modules can be taken in any order | FR3 |
 | **Practice conversations** (the gamification centrepiece): branching role-plays with a simulated peer. Every response shows how it lands and Bea explains why; unhelpful choices can be retried, so nobody can fail | FR4 |
-| **Skill check** (placement + pre/post knowledge measure for RQ3) that suggests which modules to focus on and then reviews every answer (correct answer plus explanation), and **test-out**: pass a module's quiz without reading it to earn the badge | FR4 |
-| Low-pressure gamification: quizzes with unlimited retries, a learning journey path, badge stickers, points and levels, gentle celebrations, and Bea the mascot (no leaderboards or streaks) | FR4 |
-| A searchable, filterable referral directory of campus and local services, with tap-to-call | FR5 |
+| **Skill check** (placement + pre/post knowledge measure for RQ3) with its own questions, never used in quizzes. It suggests which modules to focus on and reviews every answer (right or wrong, and why) without revealing the correct option, so retaking it stays meaningful. **Test-out**: pass a module's quiz without reading it to earn the badge | FR4 |
+| **Quiz question banks**: 10 questions per module, 5 drawn per quiz with shuffled options. *Take a new quiz* prefers questions not yet seen and can earn the badge; *Repeat this quiz* re-asks the same questions for practice only | FR4 |
+| **Learning integrity**: the server times each section against its length and each quiz against its question count. Rushed reading still counts for progress but earns no points, with a kind nudge from Bea; coordinators see rush rates, first-try scores and normalised learning gain | FR3, FR10 |
+| Low-pressure gamification: a learning journey path, badge stickers, points and levels, gentle celebrations, Bea the mascot, and a kind **learning streak** (one rest day a week allowed, best streak kept). No leaderboards | FR4 |
+| **Daily peer support stories**: one short illustrative story a day, with a reflection prompt; reading it earns points | FR4 |
+| **Community wall**: peers share their mood anonymously and others answer with kind messages from a fixed set. Posts expire after 7 days, can be reported, and notes mentioning possible risk show urgent help | FR7 |
+| A searchable, filterable referral directory of verified campus and local services, with tap-to-call, email and website links | FR5 |
 | Support-session log with optional referral to a directory service (notes encrypted) | FR6 |
 | Self-care check-ins with a mood rating and private reflection (encrypted) | FR7 |
 | Anonymous System Usability Scale (SUS) feedback | FR8 |
 | Content Administrator workspace: create, edit, publish and archive modules, quizzes and providers; publish or hide scenarios | FR9 |
 | Programme Coordinator cohort dashboard: aggregates only (incl. skill-check before/after and practice completions), small groups suppressed | FR10 |
 
-> **Pilot content notice.** The modules and scenarios are **adapted from the
-> training materials Solid Minds Counselling Clinic used to train ALU peer
-> counsellors**, and are pending Solid Minds' final review. Unverified modules
-> show a *"Pending expert review"* banner naming the source, and unverified
-> services a *"Pending verification"* tag; contact details not yet confirmed say
-> *"To be confirmed"*. The one scenario that involves risk to life is marked
-> **sensitive**, opens with a care note, and can be hidden by an admin until it
-> is reviewed. Admins tick **Content verified** once approved; no code changes
-> are needed. Beacon is a training tool, **not** a clinical or crisis service.
+> **Content.** The modules and scenarios are **adapted from the training
+> materials Solid Minds Counselling Clinic used to train ALU peer counsellors**
+> and have been reviewed with Solid Minds; the directory details have been
+> verified with ALU and Solid Minds. A module an admin adds later shows a
+> *"Not yet reviewed"* note until an admin ticks **Content verified**. The one
+> scenario that involves risk to life is marked **sensitive** and opens with a
+> care note. Beacon is a training tool, **not** a clinical or crisis service.
 
 ### Screenshots
 
@@ -71,24 +73,24 @@ More in [`docs/screenshots`](docs/screenshots).
 | Database | **PostgreSQL 16** via `pg` with versioned SQL migrations | Relational integrity for progress, referrals and roles |
 | Security | bcrypt, httpOnly session cookies, AES-256-GCM field encryption, helmet, rate limiting | Privacy-by-design, Rwanda Law No. 058/2021 |
 | Testing | **Jest** (`ts-jest`) + **Supertest** (unit + API integration), **Playwright** (end-to-end, mobile + desktop) | Matches proposal §3.5 |
-| CI/CD | **GitHub Actions** → **Vercel** (web) + **Render** (API + DB) | Free tiers suitable for a student pilot |
+| CI/CD | **GitHub Actions** → **Vercel** (web) + **Render** (API + DB) | Free tiers suitable for a student project; see [hosting and Rwanda's data law](docs/security.md#hosting-and-rwandas-data-protection-law) |
 
 ### Why TypeScript
 
-The proposal named JavaScript. The project moved to TypeScript before the pilot
+The proposal named JavaScript. The project moved to TypeScript early in development
 because the new features (branching scenarios, the skill check and the
 coordinator's research aggregates) pass structured data between the database,
 the API and the screens:
 
 - **Fewer silent bugs.** One shared shape per API response means a renamed or
-  missing field becomes a compile error instead of a blank screen during the pilot.
+  missing field becomes a compile error instead of a blank screen for a user.
 - **Safer content.** Scenario scripts and modules are typed, so a broken link
   between conversation steps is caught by the compiler and by a unit test before
   it reaches peers.
 - **Same tools, same runtime.** TypeScript compiles to the same JavaScript that
   runs on Node and in the browser; Next.js, Express, Jest and Playwright support
-  it directly. Switching before the pilot was cheaper than switching after,
-  when the codebase would be larger and pilot data would depend on it.
+  it directly. Switching early was cheaper than switching later, when the
+  codebase would be larger and real data would depend on it.
 
 **Why version 6, not 7:** TypeScript 7 (the new native compiler) does not yet
 offer the JavaScript compiler API that Next.js' type checking, `typescript-eslint`
@@ -104,6 +106,8 @@ Beacon/
 │   │   ├── login/ register/ privacy/
 │   │   ├── (app)/             # Authenticated area (shared nav shell + auth guard)
 │   │   │   ├── dashboard/ learn/[slug]/quiz/ directory/ sessions/new/
+│   │   │   ├── stories/[slug]/    # Daily peer support stories
+│   │   │   ├── community/         # Anonymous community wall
 │   │   │   ├── practice/[slug]/   # Scenario list + chat-style player
 │   │   │   ├── skill-check/       # Placement / pre-post check
 │   │   │   ├── reflect/ progress/ feedback/ account/
@@ -122,7 +126,8 @@ Beacon/
 │   │   ├── config.ts          # Validated environment configuration
 │   │   ├── schemas.ts         # zod request schemas
 │   │   ├── types.ts           # Shared types (roles, Express request augmentation)
-│   │   ├── content/           # Training content: modules, scenarios, providers (adapted from Solid Minds)
+│   │   ├── content/           # Training content: modules, question banks, scenarios, stories, providers
+│   │   ├── domain/            # Core logic as small classes: question selection, pace checks, streak, crisis detection
 │   │   ├── routes/            # HTTP layer, one file per service
 │   │   ├── services/          # Business logic + SQL (the services of Fig 3.3, plus scenarios and skill check)
 │   │   ├── middleware/        # auth / roles, validation, errors
@@ -198,7 +203,7 @@ Both steps are idempotent, so you can re-run them safely.
 
 > **Updating an existing install?** After pulling new code, run `npm run install:all`
 > and then `npm run db:setup` again. It applies any new migrations, adds new content
-> and archives the old placeholder modules, without touching accounts or user data.
+> renames older directory entries in place and archives retired ones, without touching accounts or user data.
 
 ### 5. Run the app
 
@@ -252,7 +257,7 @@ You can also register a new peer-supporter account from the landing page.
 ### Testing
 
 ```bash
-# API: 96 unit and integration tests (94% line coverage) against the test database
+# API: 160 unit and integration tests (97% line coverage) against the test database
 cd server && npm test
 
 # End-to-end: start the stack first (API + `npm run build && npm start` in client), then
@@ -267,9 +272,13 @@ on 7 device/browser profiles, Lighthouse on key pages (accessibility 100 on all)
 and an API load test with 200 concurrent connections (0 errors).
 
 The integration tests cover every functional requirement: auth and roles,
-module completion, test-out and answer secrecy, badges awarded once, scenario
+module completion, quiz attempts drawn from the question bank (repeat vs new,
+badges only from fresh questions, double submissions refused), server-side
+reading-time checks, test-out and answer secrecy, badges awarded once, scenario
 completion (including retries and rejecting impossible play-throughs), the skill
-check, directory search, encrypted notes at rest, per-user privacy,
+check (separate questions, correct options never revealed), directory search,
+encrypted notes at rest, per-user privacy, daily stories and the streak, the
+anonymous community wall (no names, reports, expiry, rate limit),
 aggregate-only dashboard data and account deletion. Unit tests also check that
 every scenario script is complete (no broken links between steps). The
 end-to-end tests walk the proposal's Figure 3.7 flow, a practice conversation,
@@ -308,23 +317,37 @@ rollback, backups and monitoring are covered in **[docs/deployment.md](docs/depl
 | [docs/api.md](docs/api.md) | REST endpoints and payloads |
 | [docs/testing.md](docs/testing.md) | Testing strategies, how to run them, results (compatibility, performance) and where to find them |
 | [docs/deployment.md](docs/deployment.md) | Full deployment plan and operations |
+| [docs/security.md](docs/security.md) | Encryption key management, threat model, and hosting under Rwanda's data protection law |
 
 ## Privacy & ethics by design
 
 - Pseudonymous accounts with **no** email, phone or real name. Consent is recorded at registration.
-- Session notes and reflections are **encrypted at rest** (AES-256-GCM); session tokens are stored hashed.
+- Session notes and reflections are **encrypted at rest** (AES-256-GCM); session tokens are stored hashed. The key lives only in the API host's secret settings, with a backup in a password manager ([how and why](docs/security.md)).
+- The community wall never shows usernames, rounds times to the hour, and removes posts after 7 days.
 - Feedback is stored **without** a user reference.
 - Coordinators see **aggregates only**; averages from fewer than 3 people are hidden.
 - Users can delete individual records or their **entire account** (right to erasure).
 - Logging sessions earns **no points**, so there is no incentive to inflate activity.
 - "Peer support is not therapy" notices and an always-visible **Urgent help** link.
 
-## Roadmap (beyond the pilot)
+## Future work
 
-Safe self-disclosure module (with Solid Minds) · confidence scale (co-designed
-in workshops) · recorded audio and video from the clinical partner ·
-Kinyarwanda localisation (next-i18next) · supervisor messaging · email
-notifications · LMS integration · multi-university tenancy.
+- **Anonymous community forum** with free-text threads. Deferred because free-text
+  replies need a moderation team and a safeguarding policy; the community wall's
+  fixed kind messages give peer support safely in the meantime.
+- **Peer pairing ("learning buddies")** so supporters learn together and look out
+  for each other.
+- **Encryption key rotation** script and key ring (the `v1:` ciphertext prefix is
+  already in place for this).
+- **Hosting in Rwanda, or NCSA authorisation** for storage abroad, before real
+  personal data is stored (see [docs/security.md](docs/security.md)).
+- **Safe self-disclosure module**, if Solid Minds provides guidance. It was in the
+  proposal, but it is not part of their PEERS curriculum or core competencies, so it
+  was not written without clinical input. *Caring for Yourself* covers a different
+  topic (burnout and stepping back).
+- Recorded audio and video from the
+  clinical partner · Kinyarwanda localisation · email notifications · LMS
+  integration · multi-university tenancy.
 
 ## License
 

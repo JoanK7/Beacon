@@ -36,15 +36,28 @@ accepted for API clients). Errors have the shape:
 |---|---|---|---|
 | GET | `/modules` | ✓ | Published modules with my progress |
 | GET | `/modules/:slug` | ✓ | Module, sections (with `viewed`), quiz meta, badge, `sourceNote`, linked `scenarios` |
-| POST | `/modules/:slug/sections/:sectionId/view` | ✓ | Mark section read → `{ sectionsViewed, sectionCount, status }` |
-| GET | `/quiz/:slug` | ✓ | Questions **without answers**. Open at any time; `testOut: true` when the module has not been read yet |
-| POST | `/quiz/:slug/submit` | ✓ | `{ answers: [optionIndex…] }` → `{ result: { score, passed, testedOut, results[], badge } }` |
+| POST | `/modules/:slug/sections/:sectionId/view` | ✓ | Mark section read → `{ sectionsViewed, sectionCount, status, rushed }`. The server measures time since the module was opened or the last section was read; `rushed: true` means far faster than the section's length allows (still counts for progress, earns no points) |
+| GET | `/quiz/:slug` | ✓ | Quiz overview, no questions: `{ passingScore, questionCount, bankSize, bestScore, attempts, canRepeat, testOut }` |
+| POST | `/quiz/:slug/attempts` | ✓ | `{ mode: new \| repeat }` → 201 `{ attempt: { attemptId, mode: first \| new \| repeat, canEarnBadge, questions[] } }`. The server draws the questions (new: least-seen first; repeat: the last set) and shuffles options; **no answers** |
+| POST | `/quiz/attempts/:id/submit` | ✓ | `{ answers: [optionIndex as shown…] }` → `{ result: { score, passed, mode, canEarnBadge, rushed, testedOut, questions[], results[], badge } }`. 404 for someone else's attempt, 409 if already submitted. Repeats never award the badge |
 | GET | `/scenarios` | ✓ | Published practice conversations with my `completed` and `bestInsight` |
 | GET | `/scenarios/:slug` | ✓ | Full branching script (practice, not assessment, so feedback is included) |
 | POST | `/scenarios/:slug/complete` | ✓ | `{ path: [{ nodeId, choice }…] }`. The server replays the path, rejects impossible ones (400) → 201 `{ result: { insightScore, retries, firstCompletion } }` |
-| GET | `/skill-check` | ✓ | Questions (2 per published module, **without answers**) and my latest `pre` / `post` results |
-| POST | `/skill-check` | ✓ | `{ kind: pre \| post, answers: [{ questionId, answer }…] }` → 201 `{ result: { score, results[] } }`. Per module: `strong` or `practise`, plus `questions[]` reviewing each answer (`chosen`, `correctIndex`, `correct`, `explanation`). The review is stored with the attempt and returned in `latest` |
-| GET | `/progress` | ✓ | Points, level, badges, activity counts |
+| GET | `/skill-check` | ✓ | Questions (2 per published module, separate from quiz questions, **without answers**) and my latest `pre` / `post` results |
+| POST | `/skill-check` | ✓ | `{ kind: pre \| post, answers: [{ questionId, answer }…] }` → 201 `{ result: { score, results[] } }`. Per module: `strong` or `practise`, plus `questions[]` reviewing each answer (`chosen`, `correct`, `explanation`). The correct option is **never** returned. The review is stored with the attempt and returned in `latest` |
+| GET | `/progress` | ✓ | Points, level, badges, activity counts, `carefulReads`, `storiesRead`, `firstTryAverage`, `streak: { current, best, activeToday, restDaysPerWeek }` |
+| GET | `/stories` | ✓ | `{ today, stories[], pointsPerStory }`. Today's story = day number in Kigali mod the number of stories |
+| GET | `/stories/:slug` | ✓ | One story with `read` |
+| POST | `/stories/:slug/read` | ✓ | `{ firstRead, pointsEarned }` (15 points the first time only) |
+
+## Community wall
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/community/posts` | ✓ | Posts from the last 7 days, not hidden: `{ id, mood, note, needsCare, postedAt (rounded to the hour), mine, supports, mySupports, reportedByMe }`. **No usernames or ids** |
+| POST | `/community/posts` | ✓ | `{ mood: 1-5, note? (≤ 280) }` → 201. At most 5 a day; `needsCare` set when the note may mention risk |
+| DELETE | `/community/posts/:id` | ✓ | Delete my own post |
+| POST | `/community/posts/:id/support` | ✓ | `{ kind: hug \| here_for_you \| you_got_this \| reach_out }`, toggles |
+| POST | `/community/posts/:id/report` | ✓ | → `{ hidden }`. 409 for your own post; 3 reports hide it |
 
 ## Directory, sessions, self-care, feedback (FR5–FR8)
 | Method | Path | Auth | Description |
@@ -77,8 +90,10 @@ Enums: `category` ∈ academic, social, personal, wellbeing, financial, other ·
 | POST | `/admin/providers` | Create provider |
 | PUT | `/admin/providers/:id` | Update provider |
 | PATCH | `/admin/providers/:id/archive` | `{ archived: boolean }` |
+| GET | `/admin/community` | Reported, hidden or risk-flagged posts (still anonymous) |
+| PATCH | `/admin/community/:id` | `{ hidden: boolean }`. Restoring stops reports hiding it again |
 
 ## Cohort dashboard (FR10): role `coordinator` or `admin`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/dashboard` | Aggregates: overview counts, per-module completion, sessions by topic/outcome/week, referrals by type, mood and SUS averages, skill-check pre/post averages, scenario completions (averages suppressed below 3 people) |
+| GET | `/dashboard` | Aggregates: overview counts, per-module completion, sessions by topic/outcome/week, referrals by type, mood and SUS averages, skill-check pre/post averages, scenario completions, and `learningQuality` (rushed-read rate, first-try quiz average and pass rate, attempts by mode, normalised learning gain). Averages and rates are suppressed below 3 people |

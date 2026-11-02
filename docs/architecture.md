@@ -85,13 +85,15 @@ sequenceDiagram
 | Passwords | bcrypt (12 rounds); constant-time path for unknown usernames |
 | Authorisation | `requireAuth` + `requireRole('admin' \| 'coordinator')` middleware; every query is scoped to `req.user.id` |
 | Data minimisation | Pseudonymous username; no email, phone or real name; the UI warns against identifying details in notes |
-| Encryption at rest | Session notes and reflection text encrypted with AES-256-GCM (authenticated) using an app key from `ENCRYPTION_KEY` |
+| Encryption at rest | Session notes and reflection text encrypted with AES-256-GCM (authenticated) using an app key from `ENCRYPTION_KEY`, kept in the API host's secret settings with a backup in a password manager ([key management](security.md)) |
 | Encryption in transit | HTTPS on Vercel and Render |
 | Anonymous feedback | `feedback` table has no user column |
 | Aggregate-only reporting | Coordinator endpoint returns counts and averages; averages from fewer than 3 responses are suppressed |
 | Right to erasure | `DELETE /api/auth/me` cascades to all personal data |
 | Input validation | zod schemas on every write; parameterised SQL; LIKE wildcards escaped |
 | Hardening | helmet security headers, CORS allow-list, JSON body limit, rate limiting on login/registration/feedback, no stack traces to clients |
+| Learning integrity | Reading and quiz times measured on the server, never trusted from the browser; quiz questions drawn and remembered server-side; answers never sent before submission |
+| Community wall | No usernames or ids in responses; times rounded to the hour; fixed set of replies; reports auto-hide; 7-day expiry; 5 posts a day |
 | Same-origin API | Next.js proxies `/api/*`, so the browser never needs a third-party cookie |
 
 ## Offline / PWA (NFR2)

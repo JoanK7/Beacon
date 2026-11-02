@@ -1,6 +1,8 @@
 # Deployment Plan
 
-## Target infrastructure (pilot)
+## Target infrastructure
+
+> **Data location.** Render and Vercel host outside Rwanda. Under Law No. 058/2021 (Art. 50), storing real personal data abroad needs NCSA authorisation, so the deployment holds demo data only until that is in place or the API and database move to a Rwandan host. See [security.md](security.md#hosting-and-rwandas-data-protection-law).
 
 ```mermaid
 flowchart LR
@@ -15,15 +17,15 @@ flowchart LR
 | Component | Platform | Plan | Why |
 |---|---|---|---|
 | Frontend | **Vercel** | Hobby (free) | Native Next.js hosting, global CDN, automatic HTTPS and preview deployments per pull request |
-| API | **Render** Web Service | Free → Starter for the pilot | Simple Node hosting, health checks, Blueprint (`render.yaml`) as infrastructure-as-code |
-| Database | **Render PostgreSQL** | Free → Basic for the pilot | Same private network as the API |
+| API | **Render** Web Service | Free → Starter for real use | Simple Node hosting, health checks, Blueprint (`render.yaml`) as infrastructure-as-code |
+| Database | **Render PostgreSQL** | Free → Basic for real use | Same private network as the API |
 | Domain | Any registrar (budget line in proposal Table 1.1) | ~40,000 RWF | Point to Vercel; optional |
 | CI | **GitHub Actions** | Free | `.github/workflows/ci.yml` gates every push and PR |
 
-> **Free-tier caveats, to budget for before the pilot.** Render's free web
+> **Free-tier caveats, to budget for before real use.** Render's free web
 > service sleeps after 15 minutes idle (about 50s cold start, which breaks the
 > 3-second target in NFR2), and the free Postgres instance expires after 30 days.
-> For the two-month pilot, upgrade the API to *Starter* and the database to
+> For sustained use, upgrade the API to *Starter* and the database to
 > *Basic*, or use a free external Postgres such as Neon and set
 > `DATABASE_SSL=true`.
 
@@ -42,7 +44,7 @@ flowchart LR
 1. Push the repository to GitHub.
 2. Render dashboard → **New → Blueprint** → select the repo. Render reads `render.yaml` and creates `beacon-api` and `beacon-db`.
 3. When prompted, set the secrets:
-   - `ENCRYPTION_KEY`: generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. **Store it safely.** Losing it makes existing notes unreadable.
+   - `ENCRYPTION_KEY`: generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Paste it only into Render's secret field and keep a backup copy in a password manager. **Losing every copy makes existing notes unreadable.** See [security.md](security.md#where-the-encryption-key-is-kept).
    - `SEED_ADMIN_PASSWORD`, `SEED_COORDINATOR_PASSWORD`, `SEED_DEMO_PASSWORD`: strong, unique passwords.
    - `CORS_ORIGINS`: your Vercel URL (set after step 2; only needed for direct API clients).
 4. Deploy. The start command runs migrations and the idempotent seed, then starts the API. Check `https://<api>.onrender.com/api/health` returns `{"status":"ok"}`.
@@ -58,7 +60,7 @@ flowchart LR
 - [ ] Register a test peer, complete a module, pass the quiz, log a session with a referral
 - [ ] Coordinator dashboard loads and shows aggregates only
 - [ ] Lighthouse (mobile): PWA installable, performance ≥ 80 on "Slow 4G"
-- [ ] Replace placeholder directory entries and module text with verified content, then tick **Content verified**
+- [ ] Check the directory and modules show as verified (the seed marks the authored content verified)
 - [ ] Set up an uptime monitor (e.g. UptimeRobot) on `/api/health` to track the 99% target (NFR4)
 
 ## Continuous integration & delivery
@@ -72,7 +74,7 @@ flowchart LR
 | Concern | Approach |
 |---|---|
 | Secrets | Only in Render/Vercel env settings; `.env` files are git-ignored |
-| Backups | Render Postgres daily backups (paid plans), plus a weekly `pg_dump` during the pilot |
+| Backups | Render Postgres daily backups (paid plans), plus a weekly `pg_dump` |
 | Monitoring | Render logs + health check; uptime monitor on `/api/health` |
 | Rollback | Vercel "Promote previous deployment"; Render "Rollback" to the previous deploy |
 | Data retention | At study end, export aggregates for analysis, then delete the database per the ethics protocol |

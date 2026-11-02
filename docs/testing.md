@@ -7,15 +7,15 @@ How Beacon is tested, how to run each kind of test, and where the results are.
 | Strategy | Tool | What it checks | Size | Latest result |
 |---|---|---|---|---|
 | Static analysis | TypeScript (strict), ESLint | Type errors and code problems in both apps | Whole codebase | Clean |
-| Unit tests | Jest | Pure logic: scoring, encryption, scenario replay, input validation, content and lesson formatting | 61 tests in 5 files | 61 / 61 pass |
-| Integration tests | Jest + Supertest + real PostgreSQL | Every API area through real HTTP requests and a real database | 35 tests | 35 / 35 pass |
-| Code coverage | Jest (Istanbul) | How much of the API code the tests run | | 94.5% lines, 92.1% statements, 90.3% functions, 71.6% branches |
-| End-to-end tests | Playwright | 7 complete user journeys in a real browser against the running app | 7 journeys | Pass on all 7 profiles below |
-| Compatibility | Playwright on 3 browser engines | The same 7 journeys on phones, a tablet and desktops | 7 profiles × 7 journeys = 49 runs | 49 / 49 pass |
+| Unit tests | Jest | Pure logic: scoring, encryption, scenario replay, input validation, content, question selection, reading pace, streak, crisis detection | 109 tests in 6 files | 109 / 109 pass |
+| Integration tests | Jest + Supertest + real PostgreSQL | Every API area through real HTTP requests and a real database | 51 tests | 51 / 51 pass |
+| Code coverage | Jest (Istanbul) | How much of the API code the tests run | | 97.0% lines, 94.5% statements, 94.2% functions, 75.5% branches |
+| End-to-end tests | Playwright | 10 complete user journeys in a real browser against the running app | 10 journeys | See section 4 |
+| Compatibility | Playwright on 3 browser engines | The same journeys on phones, a tablet and desktops | 7 profiles | 49 / 49 pass (7 journeys, 29 Oct); re-run with 10 journeys on the next push |
 | Performance (front end) | Lighthouse 12.6 | Load speed and accessibility on a simulated mid-range phone on slow 4G | 5 key pages | Performance 72–100, accessibility 100 |
 | Performance (API) | autocannon 8 | Throughput and response times under 200 simultaneous connections | 3 endpoints | 0 errors; 99% of requests under 240 ms |
 | Upgrade test | Integration test + manual run | Content updates on a live database keep learners' progress | 2 tests + 1 manual run | Pass |
-| Usability (pilot) | System Usability Scale form in the app | How easy peers find Beacon | Collected during the pilot | Pending pilot |
+| Usability | System Usability Scale form in the app, plus peer counsellor and supervisor feedback | How easy and engaging peers find Beacon | Ongoing | Feedback led to the lesson blocks, question banks, streak, stories and community wall |
 
 Every push to `main` runs the CI and compatibility workflows on GitHub, so these results are re-checked automatically.
 
@@ -65,8 +65,9 @@ Fast tests of pure functions, with normal inputs, boundaries and invalid inputs.
 | `scoring.test.ts` | Quiz scoring, SUS score, points and levels | Missing answers count as wrong; empty quiz rejected; SUS best (100), worst (0) and neutral (50); wrong number of answers or out-of-range values rejected; level cap; top level reachable by finishing all modules |
 | `crypto.test.ts` | AES-256-GCM encryption of notes, session tokens | Round trip; a fresh random IV each time (same text never encrypts the same way); empty stays empty; **tampered ciphertext is detected**; tokens unique and URL-safe; hashing is deterministic |
 | `scenario.test.ts` | Practice-conversation replay and scoring | All-helpful path scores 100; retry after an unhelpful choice only scores the first try; "okay" gets half credit; **paths that skip steps, use missing choices or stop early are rejected**; broken scripts detected |
-| `schemas.test.ts` | Input validation rules | Consent required; short passwords and unsafe usernames rejected; answer index outside the options rejected; non-URL-friendly slugs rejected; only known categories and outcomes accepted |
-| `content.test.ts` | The authored training content itself | Unique slugs; every module passes the admin rules; every lesson uses valid formatting; quiz answers are not always in the same position; every scenario can be completed; malformed lesson blocks are flagged (8 cases) |
+| `schemas.test.ts` | Input validation rules | Consent required; short passwords and unsafe usernames rejected; answer index outside the options rejected; a quiz showing more questions than its bank rejected; provider websites must be https (`http:` and `javascript:` rejected) and emails valid; community replies only from the fixed set, notes up to 280 characters; non-URL-friendly slugs rejected; only known categories and outcomes accepted |
+| `content.test.ts` | The authored training content itself | Unique slugs; every module passes the admin rules; every lesson uses valid formatting; **10 quiz and 2 skill-check questions per module, unique ids, and no skill-check question ever used in a quiz**; quiz answers are not always in the same position; directory has no placeholders, valid emails and https links, and no hours for ALU services; stories link to real modules; every scenario can be completed; malformed lesson blocks are flagged (8 cases) |
+| `domain.test.ts` | Question selection, pace checks, learning gain, streak, crisis detection | Draws never exceed the bank; **least-seen questions always come first (20 random seeds)**; reproducible with a seed; option orders are true permutations; fair shuffle; a repeat drops questions removed from the bank; reading faster than a quarter of the expected time (min 8 s) is rushed, exactly at the threshold is not; quiz under 6 s per question is rushed; learning gain with pre = 100 is undefined; streak: no activity, today not yet active, one rest day forgiven, two in a row or two in a week break it, duplicates and unordered dates, month and year boundaries; crisis phrases flagged (including curly apostrophes) and everyday phrases like "exams are killing me" not flagged |
 
 ## 2. Integration tests (`server/tests/integration/api.test.ts`)
 
@@ -75,13 +76,16 @@ The whole Express app is exercised through HTTP (Supertest) against a real Postg
 | Area | Behaviour proven (including failure cases) |
 |---|---|
 | Authentication (FR1) | Register sets an **httpOnly** cookie; duplicate usernames rejected case-insensitively; registration without consent rejected; wrong password gets a generic message (no hint whether the username exists); protected routes return 401; logout ends the session |
-| Training and quizzes (FR2–FR4) | Six modules in order; module completes only when every section is read; **correct answers are never sent to the browser**; a failed attempt gives no badge; a badge is awarded once only; test-out works |
+| Training and quizzes (FR2–FR4) | Six modules in order; module completes only when every section is read; an attempt draws 5 distinct questions from the bank; **correct answers are never sent before submission**; a second submission of the same attempt is refused (409), another user's attempt is not found (404), missing answers are rejected (400); **a repeated quiz never awards the badge**; a new quiz prefers unseen questions and awards the badge once; test-out works |
+| Learning integrity | Sections clicked through instantly are flagged as rushed and earn no points; after a realistic reading time the same flow earns points; re-marking a section changes nothing; a quiz answered instantly is flagged as rushed; first-try average is reported |
 | Practice conversations | Ideal path scores 100 and gives points only the first time; retries score only first tries; **an impossible path is rejected (400)** |
-| Skill check | Two questions per module without answers; every question must be answered; per-module strengths and an answer review are returned and saved |
+| Skill check | Two questions per module without answers, **none of them used in any quiz**; every question must be answered; per-module strengths and a review (right or wrong, and why) are returned and saved; **the correct option never appears in the response, even for older saved attempts** |
 | Directory, sessions, referrals (FR5–FR6) | Search by keyword and category; **`%` and `_` in a search are treated literally** (no SQL wildcard tricks); session notes are **encrypted in the database** |
 | Self-care and feedback (FR7–FR8) | Reflections stored; SUS feedback stored anonymously |
+| Stories and streak | Everyone sees the same story on the same day; reading earns 15 points once, never twice; unknown stories are 404; the streak counts today once there is activity and is zero for a new account |
+| Community wall | **Responses contain no usernames or user ids**, times are rounded to the hour; a note mentioning risk is flagged but still posted; kind messages toggle on and off and only the fixed set is accepted; you cannot report your own post; three reports hide a post and an admin can restore it; posts older than 7 days leave the wall; only the author can delete; at most 5 posts a day |
 | Roles (FR9–FR10) | Peers blocked from admin and dashboard (403); admin create, publish, archive and hide; **coordinator sees aggregates only, with groups under 3 people hidden**, and no usernames or note text leak |
-| Content refresh | Older lesson text updates in place keeping section ids and reading progress; a module edited by an admin is never overwritten |
+| Content refresh | Older lesson text and quizzes update in place keeping section ids and reading progress; a module edited by an admin is never overwritten; older directory entries are renamed in place (no duplicates), retired ones archived, and an entry an admin edited is left alone |
 | Privacy | Deleting an account removes the user and all linked records |
 | Errors | Unknown routes return JSON 404s |
 
@@ -96,6 +100,11 @@ Real browser, real app, real database. Each journey is a complete task a user wo
 5. **Coordinator**: sees only aggregate data.
 6. **Admin**: opens the module editor and the scenario list.
 7. **Reduced motion**: with the device set to reduce motion, celebrations appear without confetti and flip cards still work.
+8. **Repeat vs new quiz**: a repeat shows the same questions as a "practice round" and gives no badge; a new quiz shows none of the questions seen before.
+9. **Daily story and streak**: reading today's story earns 15 points and the dashboard shows a 1-day streak.
+10. **Community wall**: a mood and note are shared without the username, marked "your post", and can be deleted.
+
+Journeys 1, 2 and 4 were also updated: the lesson test now checks Bea's "That was quick!" nudge, the directory test checks ALU Student Success with its email link and that nothing says "pending", and the skill-check test checks that the review shows the reason but no correct answer.
 
 ## 4. Compatibility (`.github/workflows/compatibility.yml`)
 
@@ -115,7 +124,7 @@ The same 7 journeys run on each profile (screen size, touch, user agent and brow
 
 - On the first run, `small-android` and `webkit-safari` failed. The cause was test data: their longer device names made test usernames 31 characters, and the app **correctly rejected** them (the limit is 30). The tests now generate shorter usernames.
 - On desktop WebKit, the tests typed into the register form before the page had finished loading its interactive code, and the field was cleared. The tests now wait for the page to settle. **This could also affect real users on very slow connections who start typing immediately**; making the sign-in and register forms keep early typing is a planned improvement.
-- Limits: Playwright emulates devices on desktop engines; it does not run on physical phones. The pilot itself (real phones on campus Wi-Fi and mobile data) complements this.
+- Limits: Playwright emulates devices on desktop engines; it does not run on physical phones. Testing with peer counsellors on their own phones complements this.
 
 ## 5. Performance
 
@@ -147,4 +156,14 @@ Even the slowest endpoint answers 99% of requests within a quarter of a second w
 
 ## 6. Upgrade test
 
-Content updates must never erase learners' progress. Besides the two integration tests, a database was built with the previous release, given a learner with reading progress, and then upgraded with the current code: all six modules updated, all 29 section ids and the learner's 5 "sections read" records were kept, and running it again changed nothing.
+Content updates must never erase learners' progress. Besides the integration tests, a database is built with the previous release, given a learner with progress, and then upgraded with the current code.
+
+**Lesson blocks release (29 October):** all six modules updated, all 29 section ids and the learner's 5 "sections read" records were kept, and running it again changed nothing.
+
+**Final release (2 November):** the database was built from the previous release (commit `5474cd1`), and the learner was given reading progress, a passed quiz attempt and a session with a referral to "ALU Academic Advising (placeholder)". After upgrading:
+
+- migration 004 applied; all six modules moved to content version 3 and are marked verified; each quiz now has 10 questions plus 2 skill-check questions;
+- all 29 section ids and all 6 "sections read" records were kept, and the old quiz attempt still counts as submitted;
+- the directory entries were **renamed in place**: the old referral now points to "ALU Student Success", with no duplicate entries; the ALU Emergency Line was added and Campus Health Services archived;
+- the 10 daily stories were added;
+- running the upgrade a second time changed nothing.
