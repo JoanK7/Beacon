@@ -1,9 +1,12 @@
 // End-to-end journeys through the real stack (client + API + database):
 // - the core flow from proposal Figure 3.7: register → complete a module →
 //   pass its quiz → earn a badge → find a service → log a session with a referral;
-// - the gamified additions: practice conversations, skill check and test-out;
+// - the gamified additions: practice conversations, skill check and test-out,
+//   repeat vs new quizzes, daily stories, the streak and the community wall;
 // - role views: coordinator (aggregates only) and admin.
 import { test, expect, type Page, type TestInfo } from '@playwright/test';
+// The real question bank, so tests can answer whichever questions the server draws.
+import { quizBanks } from '../../server/src/content/question-banks';
 
 const SHOTS = process.env.E2E_SCREENSHOTS; // optional folder for documentation screenshots
 const PASSWORD = 'e2e-password-123';
@@ -41,12 +44,29 @@ async function signIn(page: Page, username: string, password: string) {
   await page.getByRole('button', { name: 'Sign in' }).click();
 }
 
-// Correct answers for the "Boundaries & Confidentiality" quiz (server/src/content/modules.ts).
-async function answerBoundariesQuiz(page: Page) {
-  await page.getByLabel('Explain kindly that you keep things private unless you are worried about their safety').check();
-  await page.getByLabel('A peer talks about hurting themselves').check();
-  await page.getByLabel('Responsibility for risk is shared with the Wellness Center').check();
-  await page.getByLabel('Not expected, and it can harm you and the support you give').check();
+/**
+ * Answer every question in the current quiz attempt correctly. The server
+ * picks 5 questions from the bank and shuffles the options, so each answer is
+ * found by matching the question text against the bank.
+ */
+async function answerQuizCorrectly(page: Page, slug: string) {
+  const bank = quizBanks[slug]!;
+  const questions = page.locator('form fieldset');
+  await expect(questions.first()).toBeVisible();
+  const count = await questions.count();
+  expect(count).toBe(5);
+  for (let i = 0; i < count; i += 1) {
+    const question = questions.nth(i);
+    const text = (await question.locator('p').first().textContent()) ?? '';
+    const match = bank.find((q) => text.includes(q.prompt));
+    expect(match, `question "${text}" is in the bank`).toBeDefined();
+    await question.getByLabel(match!.options[match!.answerIndex]!, { exact: true }).check();
+  }
+}
+
+/** The question prompts listed in the quiz review, in order. */
+async function reviewedPrompts(page: Page) {
+  return page.locator('section[aria-labelledby="review-heading"] p.font-semibold').allTextContents();
 }
 
 test('peer supporter completes the module-to-referral flow', async ({ page }, testInfo) => {
@@ -70,8 +90,9 @@ test('peer supporter completes the module-to-referral flow', async ({ page }, te
   await expect(page.getByRole('list', { name: 'Your learning journey' })).toBeVisible();
   await shot(page, '04-modules', testInfo);
   await page.getByRole('link', { name: /Boundaries & Confidentiality/ }).click();
-  await expect(page.getByText('Pending expert review.')).toBeVisible();
+  // Reviewed content: a source credit, and no "pending review" banner.
   await expect(page.getByText(/Adapted from the Solid Minds/)).toBeVisible();
+  await expect(page.getByText(/pending|not yet reviewed/i)).toHaveCount(0);
   await shot(page, '05-module', testInfo);
   for (let i = 0; i < 4; i += 1) {
     await page.getByRole('button', { name: 'Mark as read & continue' }).click();
@@ -81,7 +102,7 @@ test('peer supporter completes the module-to-referral flow', async ({ page }, te
 
   // Quiz: pass and earn the badge
   await page.getByRole('link', { name: 'Take the quiz' }).click();
-  await answerBoundariesQuiz(page);
+  await answerQuizCorrectly(page, 'boundaries-confidentiality');
   await shot(page, '06-quiz', testInfo);
   await page.getByRole('button', { name: 'Submit answers' }).click();
   await expect(page.getByText('You passed!')).toBeVisible();
@@ -95,7 +116,14 @@ test('peer supporter completes the module-to-referral flow', async ({ page }, te
   // Directory: filter, then refer
   await page.goto('/directory');
   await page.getByRole('button', { name: 'Academic', exact: true }).click();
-  await expect(page.getByRole('heading', { name: /Academic Advising/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'ALU Student Success' })).toBeVisible();
+  // Only categories with at least one service get a filter chip (there is no medical service).
+  await expect(page.getByRole('button', { name: 'Medical', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'studentsuccess_rw@alueducation.com' })).toHaveAttribute(
+    'href',
+    'mailto:studentsuccess_rw@alueducation.com',
+  );
+  await expect(page.getByText(/pending verification|to be confirmed/i)).toHaveCount(0);
   await shot(page, '08-directory', testInfo);
   await page.getByRole('link', { name: 'Log a referral to this service →' }).first().click();
 
@@ -132,7 +160,8 @@ test('lessons use interactive blocks that never block progress', async ({ page }
   await expect(lesson.getByRole('complementary', { name: 'Remember' })).toBeVisible();
   await expect(lesson.getByText(/Section 1 of 6 · about \d+ min/)).toBeVisible();
   await page.getByRole('button', { name: 'Mark as read & continue' }).click();
-  await expect(page.getByText('Nice! 1 of 6 sections read')).toBeVisible();
+  // Clicking straight through is faster than anyone can read: Bea nudges kindly, nothing is blocked.
+  await expect(page.getByText('That was quick!')).toBeVisible();
   // Section 2: ordered ideas as a step list.
   await expect(lesson.getByRole('listitem').filter({ hasText: 'Meaning' })).toBeVisible();
   await page.getByRole('button', { name: 'Mark as read & continue' }).click();
@@ -209,19 +238,79 @@ test('skill check suggests modules and a peer can test out of a quiz', async ({ 
   await shot(page, '19-skill-check', testInfo);
   await page.getByRole('button', { name: 'See my results' }).click();
   await expect(page.getByRole('link', { name: 'Go to my journey' })).toBeVisible();
-  // Review: each answer marked right or wrong, with the correct answer shown for mistakes.
+  // Review: each answer marked right or wrong, with the reason, but never the correct option.
   // (Always picking the first option guarantees at least one wrong answer.)
   await expect(page.getByRole('heading', { name: 'Review your answers' })).toBeVisible();
   await expect(page.getByText('Your answer:').first()).toBeVisible();
-  await expect(page.getByText('Correct answer:').first()).toBeVisible();
+  await expect(page.getByText('Why:').first()).toBeVisible();
+  await expect(page.getByText('Correct answer:')).toHaveCount(0);
   await shot(page, '20-skill-results', testInfo);
 
   // Test out: take a quiz without reading the module.
   await page.goto('/learn/boundaries-confidentiality/quiz');
   await expect(page.getByText('Testing out')).toBeVisible();
-  await answerBoundariesQuiz(page);
+  await answerQuizCorrectly(page, 'boundaries-confidentiality');
   await page.getByRole('button', { name: 'Submit answers' }).click();
   await expect(page.getByText('You tested out!')).toBeVisible();
+});
+
+test('a repeated quiz is practice; a new quiz asks different questions', async ({ page }, testInfo) => {
+  await registerPeer(page, 'e2e_qz', testInfo);
+  const slug = 'psychological-first-aid';
+  await page.goto(`/learn/${slug}/quiz`);
+  await expect(page.getByText('Each quiz asks 5 questions from a bank of 10.', { exact: false })).toBeVisible();
+  await answerQuizCorrectly(page, slug);
+  await page.getByRole('button', { name: 'Submit answers' }).click();
+  await expect(page.getByText('You tested out!')).toBeVisible();
+  const firstPrompts = await reviewedPrompts(page);
+
+  // Repeat: the same questions, for practice. No badge.
+  await page.getByRole('button', { name: 'Repeat this quiz' }).click();
+  await expect(page.getByText('Practice round')).toBeVisible();
+  await answerQuizCorrectly(page, slug);
+  await page.getByRole('button', { name: 'Submit answers' }).click();
+  await expect(page.getByText('Great practice!')).toBeVisible();
+  await expect(page.getByText(/Repeated quizzes are for practice/)).toBeVisible();
+  expect([...(await reviewedPrompts(page))].sort()).toEqual([...firstPrompts].sort());
+  await shot(page, '23-quiz-repeat', testInfo);
+
+  // New quiz: questions this learner has not seen yet (the bank has 10, each quiz shows 5).
+  await page.getByRole('button', { name: 'Take a new quiz' }).click();
+  await expect(page.getByText('Practice round')).toHaveCount(0);
+  const prompts = page.locator('form fieldset p');
+  await expect(prompts.first()).toBeVisible();
+  const newPrompts = await prompts.allTextContents();
+  expect(newPrompts.filter((t) => firstPrompts.some((p) => t.includes(p.trim())))).toHaveLength(0);
+});
+
+test('daily story earns points and starts a learning streak', async ({ page }, testInfo) => {
+  await registerPeer(page, 'e2e_st', testInfo);
+  await expect(page.getByText('No streak yet')).toBeVisible();
+  await page.getByRole('link', { name: 'Read the story' }).click();
+  await expect(page.getByText(/illustrative story/i)).toBeVisible();
+  await page.getByRole('button', { name: "I've read this story" }).click();
+  await expect(page.getByText('+15 points. Thank you for reading!')).toBeVisible();
+  await shot(page, '24-story', testInfo);
+  await page.goto('/dashboard');
+  await expect(page.getByText('1-day learning streak').first()).toBeVisible();
+  await page.goto('/progress');
+  await expect(page.getByText('Stories read')).toBeVisible();
+});
+
+test('peer shares a mood on the community wall without their name', async ({ page }, testInfo) => {
+  const username = await registerPeer(page, 'e2e_cw', testInfo);
+  await page.goto('/community');
+  await page.getByText('Low', { exact: true }).click();
+  await page.getByLabel('A short note (optional)').fill('Long week of exams, feeling tired.');
+  await page.getByRole('button', { name: 'Share anonymously' }).click();
+  const post = page.getByRole('listitem').filter({ hasText: 'Long week of exams, feeling tired.' });
+  await expect(post).toBeVisible();
+  await expect(post.getByText(/your post/)).toBeVisible();
+  await expect(page.getByRole('main').getByText(username)).toHaveCount(0);
+  await shot(page, '25-community', testInfo);
+  page.once('dialog', (dialog) => void dialog.accept());
+  await post.getByRole('button', { name: 'Delete' }).click();
+  await expect(post).toHaveCount(0);
 });
 
 test('coordinator sees only aggregate data', async ({ page }, testInfo) => {
@@ -229,6 +318,7 @@ test('coordinator sees only aggregate data', async ({ page }, testInfo) => {
   await expect(page.getByRole('heading', { name: 'Cohort dashboard' })).toBeVisible();
   await expect(page.getByText('No individual records are shown.', { exact: false })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Skill check: before and after' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Learning quality' })).toBeVisible();
   await shot(page, '13-coordinator', testInfo);
 });
 
