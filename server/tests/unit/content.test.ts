@@ -1,6 +1,9 @@
 // Guards the authored training content so edits can't silently break the app.
 import { modules } from '../../src/content/modules';
 import { scenarios } from '../../src/content/scenarios';
+import { providers } from '../../src/content/providers';
+import { stories } from '../../src/content/stories';
+import { QUESTIONS_PER_ATTEMPT } from '../../src/db/seed';
 import * as schemas from '../../src/schemas';
 import { validateScript, replayScenario } from '../../src/utils/scenario';
 import { validateMarkup } from '../../src/content/markup-check';
@@ -15,8 +18,28 @@ describe('training modules', () => {
   it.each(modules.map((m) => [m.slug, m] as const))('%s passes the admin validation rules', (_slug, m) => {
     const result = schemas.moduleInput.safeParse({ ...m, status: 'published', sections: m.sections, quiz: { questions: m.quiz } });
     expect(result.success).toBe(true);
-    // The first two questions are used by the skill check.
-    expect(m.quiz.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it.each(modules.map((m) => [m.slug, m] as const))('%s has a bank of 10 quiz questions and 2 skill-check questions', (_slug, m) => {
+    expect(m.quiz).toHaveLength(10);
+    expect(m.quiz.length).toBeGreaterThanOrEqual(QUESTIONS_PER_ATTEMPT * 2); // so a "new quiz" can be fully different
+    expect(m.skillCheck).toHaveLength(2);
+    for (const q of [...m.quiz, ...m.skillCheck]) {
+      expect(schemas.question.safeParse(q).success).toBe(true);
+      expect(q.explanation.length).toBeGreaterThan(10);
+    }
+  });
+
+  it('gives every question a unique, stable id', () => {
+    const ids = modules.flatMap((m) => [...m.quiz, ...m.skillCheck].map((q) => q.id));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('never reuses a quiz question in the skill check (or the other way round)', () => {
+    const quizPrompts = new Set(modules.flatMap((m) => m.quiz.map((q) => q.prompt)));
+    const skillPrompts = modules.flatMap((m) => m.skillCheck.map((q) => q.prompt));
+    expect(skillPrompts.filter((p) => quizPrompts.has(p))).toEqual([]);
+    expect(new Set(quizPrompts).size).toBe(modules.reduce((n, m) => n + m.quiz.length, 0)); // no duplicate prompts
   });
 
   it.each(modules.map((m) => [m.slug, m] as const))('%s uses valid lesson formatting', (_slug, m) => {
@@ -25,8 +48,40 @@ describe('training modules', () => {
   });
 
   it('does not always put the correct answer in the same position', () => {
-    const positions = new Set(modules.flatMap((m) => m.quiz.map((q) => q.answerIndex)));
+    const positions = new Set(modules.flatMap((m) => [...m.quiz, ...m.skillCheck].map((q) => q.answerIndex)));
     expect(positions.size).toBeGreaterThan(1);
+  });
+});
+
+describe('directory entries', () => {
+  it('are final: no placeholders or details still to be confirmed', () => {
+    expect(JSON.stringify(providers)).not.toMatch(/placeholder|to be (confirmed|verified)|pending/i);
+  });
+
+  it('show opening hours only for services outside ALU', () => {
+    for (const p of providers) {
+      if (p.name.startsWith('ALU')) expect([p.name, p.hours]).toEqual([p.name, '']);
+    }
+    expect(providers.find((p) => p.name === 'Solid Minds Counselling Clinic')!.hours).not.toBe('');
+  });
+
+  it('have valid email addresses and secure web addresses', () => {
+    for (const p of providers) {
+      const result = schemas.providerInput.safeParse(p);
+      expect([p.name, result.success]).toEqual([p.name, true]);
+    }
+  });
+});
+
+describe('daily stories', () => {
+  it('have unique slugs, valid formatting and link to a real module', () => {
+    expect(new Set(stories.map((s) => s.slug)).size).toBe(stories.length);
+    const slugs = new Set(modules.map((m) => m.slug));
+    for (const s of stories) {
+      expect([s.slug, validateMarkup(s.body)]).toEqual([s.slug, []]);
+      expect(slugs.has(s.moduleSlug)).toBe(true);
+      expect(s.reflection).toMatch(/\?$/);
+    }
   });
 });
 
