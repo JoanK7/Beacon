@@ -5,6 +5,8 @@ BSc. Software Engineering capstone · African Leadership University · Joan Kari
 
 🔗 **Repository:** https://github.com/JoanK7/Beacon
 
+🔗 **Video Demo:** https://drive.google.com/file/d/1Kf1s9t6XP0YEgozRlYxiiCRQ-BJ74gxH/view?usp=sharing
+
 [![CI](https://github.com/JoanK7/Beacon/actions/workflows/ci.yml/badge.svg)](https://github.com/JoanK7/Beacon/actions/workflows/ci.yml)
 
 ---
